@@ -1,0 +1,18 @@
+{
+  "name": "kiosk-mode",
+  "version": "1.0.0",
+  "description": "Kiosk mode plugin for Headlamp",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx @kinvolk/headlamp-plugin build"
+  },
+  "keywords": ["Kiosk"],
+  "author": "Me",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@kinvolk/headlamp-plugin": "^0.13.1",
+    "@types/react": "^18.3.28"
+  }
+}
