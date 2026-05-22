@@ -1,12 +1,11 @@
 # headlamp-kiosk-plugin
 
-A [Headlamp™](https://headlamp.dev) plugin that enables kiosk mode: hides the sidebar and top bar, expands the main content to full viewport, and auto-redirects the cluster root to the Flux overview page.
+A [Headlamp™](https://headlamp.dev) plugin that enables kiosk mode: hides the sidebar and top bar, expands the main content to full viewport, and auto-redirects the cluster root page.
 
 ## What it does
 
 - Injects CSS to hide all navigation chrome (app bar, drawer, sidebar footer)
 - Re-applies styles on every SPA route change via `MutationObserver`
-- Redirects `/c/<cluster>` → `/c/<cluster>/flux/overview` once the Flux plugin has registered its routes
 
 ## Development
 
