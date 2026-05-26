@@ -10,10 +10,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-CLUSTER_NAME="plugin-dev"
+CLUSTER_NAME="headlamp-dev"
 NAMESPACE="headlamp"
 HEADLAMP_VERSION="0.42.0"
 PORT=8090
+CROSSPLANE_REPO_DIR="/Users/I551674/SAPDevelop/CO/legacy-plugins/headlamp-plugin-crossplane"
 
 CLUSTER_CREATED=false
 
@@ -36,10 +37,6 @@ for cmd in kind kubectl helm npm curl; do
   fi
 done
 
-# ── Build this plugin ─────────────────────────────────────────────────────────
-echo "→ building kiosk plugin..."
-(cd "$REPO_DIR" && npm install && npm run build)
-
 # ── Kind cluster ──────────────────────────────────────────────────────────────
 if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
   echo "✓ kind cluster '${CLUSTER_NAME}' already exists"
@@ -55,21 +52,26 @@ kubectl config use-context "kind-${CLUSTER_NAME}"
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
 # ── Plugin ConfigMaps ─────────────────────────────────────────────────────────
-echo "→ applying kiosk plugin ConfigMap..."
+# Both main.js AND package.json must be present — Headlamp rejects plugins that
+# are missing package.json with "Incompatible plugins disabled".
+
+echo "→ building kiosk plugin..."
+(cd "$REPO_DIR" && npm install && npm run build)
+
+echo "→ applying kiosk-plugin ConfigMap (main.js + package.json)..."
 kubectl create configmap kiosk-plugin \
   --from-file=main.js="${REPO_DIR}/dist/main.js" \
+  --from-file=package.json="${REPO_DIR}/package.json" \
   -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-# Apply the crossplane plugin ConfigMap if it has been built by its own repo.
-# To build it: in headlamp-plugin-crossplane run its build/apply script.
-CROSSPLANE_CM="${SCRIPT_DIR}/configmap-crossplane-plugin.yaml"
-if [[ -f "$CROSSPLANE_CM" ]]; then
-  echo "→ applying crossplane plugin ConfigMap from ${CROSSPLANE_CM}..."
-  kubectl apply -f "$CROSSPLANE_CM"
-else
-  echo "  (skipping crossplane plugin — ${CROSSPLANE_CM} not found)"
-  echo "  To include it: copy or symlink the generated configmap-crossplane-plugin.yaml here."
-fi
+echo "→ building crossplane plugin..."
+(cd "$CROSSPLANE_REPO_DIR" && npm install && npm run build)
+
+echo "→ applying crossplane-plugin ConfigMap (main.js + package.json)..."
+kubectl create configmap crossplane-plugin \
+  --from-file=main.js="${CROSSPLANE_REPO_DIR}/dist/main.js" \
+  --from-file=package.json="${CROSSPLANE_REPO_DIR}/package.json" \
+  -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
 # ── Headlamp via Helm ─────────────────────────────────────────────────────────
 helm repo add headlamp https://kubernetes-sigs.github.io/headlamp/ --force-update &>/dev/null
@@ -103,11 +105,9 @@ volumeMounts:
   - name: headlamp-plugins
     mountPath: /headlamp/plugins
   - name: kiosk-plugin
-    mountPath: /headlamp/plugins/kiosk-mode/main.js
-    subPath: main.js
+    mountPath: /headlamp/plugins/kiosk-plugin
   - name: crossplane-plugin
-    mountPath: /headlamp/plugins/headlamp-crossplane/main.js
-    subPath: main.js
+    mountPath: /headlamp/plugins/crossplane-plugin
 volumes:
   - name: headlamp-plugins
     emptyDir: {}
@@ -116,8 +116,7 @@ volumes:
       name: kiosk-plugin
   - name: crossplane-plugin
     configMap:
-      name: headlamp-crossplane-plugin
-      optional: true
+      name: crossplane-plugin
 EOF
 
 # ── Restart pod ───────────────────────────────────────────────────────────────
@@ -125,16 +124,35 @@ echo "→ restarting Headlamp pod..."
 kubectl rollout restart deployment headlamp -n "$NAMESPACE"
 kubectl rollout status deployment headlamp -n "$NAMESPACE" --timeout=120s
 
-# ── Port-forward ──────────────────────────────────────────────────────────────
+# ── Port-forward with auto-restart watcher ───────────────────────────────────
+# kubectl port-forward dies when the pod restarts (e.g. after kubectl rollout
+# restart). A watcher loop keeps it alive without requiring manual intervention.
+
 if lsof -ti :"$PORT" &>/dev/null; then
   echo "→ stopping existing process on port ${PORT}..."
   lsof -ti :"$PORT" | xargs kill -9 2>/dev/null || true
 fi
 
-echo "→ starting port-forward on http://localhost:${PORT}..."
-kubectl port-forward svc/headlamp "$PORT":80 -n "$NAMESPACE" &>/tmp/headlamp-portforward.log &
-PF_PID=$!
+# Kill any existing watcher for this port
+pkill -f "headlamp-pf-watch-${PORT}" 2>/dev/null || true
 
+WATCH_SCRIPT="/tmp/headlamp-pf-watch-${PORT}.sh"
+cat > "$WATCH_SCRIPT" <<WATCHER
+#!/usr/bin/env bash
+# headlamp-pf-watch-${PORT}
+while true; do
+  kubectl port-forward svc/headlamp ${PORT}:80 -n ${NAMESPACE} --context kind-${CLUSTER_NAME} \
+    >>/tmp/headlamp-portforward.log 2>&1
+  echo "\$(date): port-forward exited, restarting in 2s..." >> /tmp/headlamp-portforward.log
+  sleep 2
+done
+WATCHER
+chmod +x "$WATCH_SCRIPT"
+
+nohup bash "$WATCH_SCRIPT" &>/dev/null &
+WATCHER_PID=$!
+
+# Wait for port to be ready
 for i in $(seq 1 20); do
   if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/" | grep -qE "^(200|301|302)"; then
     break
@@ -144,5 +162,6 @@ done
 
 echo ""
 echo "✓ Headlamp is running at http://localhost:${PORT}/"
-echo "  Port-forward PID: ${PF_PID} (logged to /tmp/headlamp-portforward.log)"
-echo "  To stop: kill ${PF_PID}"
+echo "  Port-forward watcher PID: ${WATCHER_PID} (auto-restarts on pod restart)"
+echo "  Logs: /tmp/headlamp-portforward.log"
+echo "  To stop watcher: pkill -f headlamp-pf-watch-${PORT}"
