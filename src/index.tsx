@@ -4,12 +4,30 @@ import {
   registerAppTheme,
 } from '@kinvolk/headlamp-plugin/lib';
 
-// ── Custom theme: light-blue highlight for selected sidebar items ─────────────
+// ── Fiori Horizon design tokens ───────────────────────────────────────────────
+// These mirror the SAP Fiori Horizon palette used by the ManagedControlPlane UI
+// so that the embedded Headlamp view feels visually coherent.
+const FIORI = {
+  primaryBlue:        '#0070F2',
+  sidebarSelectedBg:  '#b3d9f7', // light SAP blue — visible but not full-filled
+  sidebarSelectedFg:  '#0a3d6b', // dark navy for contrast on light bg
+  pageBackground:     '#F5F6F7',
+  cardBackground:     '#FFFFFF',
+  bodyText:           '#1D2D3E',
+  mutedText:          '#6B7280',
+  successGreen:       '#107E3E',
+  warningAmber:       '#E9730C',
+  errorRed:           '#BB0000',
+  borderRadius:       '8px',
+  spacing:            '8px',
+};
+
+// ── Custom theme: Fiori-aligned sidebar highlight ─────────────────────────────
 registerAppTheme({
   name: 'kiosk',
   sidebar: {
-    selectedBackground: '#b3d9f7',
-    selectedColor: '#0a3d6b',
+    selectedBackground: FIORI.sidebarSelectedBg,
+    selectedColor:      FIORI.sidebarSelectedFg,
   },
 });
 
@@ -37,51 +55,33 @@ registerAppBarAction({
 });
 
 // ── Default namespace filter to "default" ────────────────────────────────────
-//
-// Headlamp persists the selected namespaces in localStorage under the key
-// "headlamp-selected-namespace_<clusterName>".  We pre-seed it to ["default"]
-// so that on first load resources are scoped to the default namespace.
-// We only write the value if it is currently empty (i.e. no user preference
-// has been saved yet) to avoid overriding explicit user choices.
 function forceDefaultNamespace() {
   try {
-    // Derive the cluster name from the URL path: /c/<cluster>/...
     const match = window.location.pathname.match(/^\/c\/([^/]+)/);
     const cluster = match ? match[1] : null;
     if (!cluster) return;
-
     const key = `headlamp-selected-namespace_${cluster}`;
     const saved = localStorage.getItem(key);
     const current: string[] = saved ? JSON.parse(saved) : [];
     if (current.length === 0) {
       localStorage.setItem(key, JSON.stringify(['default']));
     }
-  } catch (_) {
-    // localStorage unavailable — skip
-  }
+  } catch (_) {}
 }
 
 // ── Force sidebar into collapsed (icon-only) state ───────────────────────────
-//
-// Headlamp reads localStorage['sidebar'] on startup.  Setting { shrink: true }
-// ensures the sidebar starts collapsed.  We also dispatch the Redux action once
-// the store is available so the state is correct even after hot reloads.
 function forceSidebarCollapsed() {
   try {
     localStorage.setItem('sidebar', JSON.stringify({ shrink: true }));
-  } catch (_) {
-    // localStorage unavailable in some sandbox environments — skip
-  }
+  } catch (_) {}
 
   const tryDispatch = (): boolean => {
     try {
       const pluginLib = (window as any).pluginLib;
       if (!pluginLib) return false;
-
       const store = pluginLib['redux/stores/store']?.default;
       const sidebarSlice = pluginLib['components/Sidebar/sidebarSlice'];
       if (!store || !sidebarSlice?.setWhetherSidebarOpen) return false;
-
       store.dispatch(sidebarSlice.setWhetherSidebarOpen(false));
       return true;
     } catch (_) {
@@ -98,11 +98,7 @@ function forceSidebarCollapsed() {
   }
 }
 
-// ── CSS: hide AppBar, error banners; fix layout ───────────────────────────────
-//
-// The error banner Headlamp shows for cluster connection failures is rendered
-// as an MUI Alert (e.g. "Something went wrong with cluster ekx-hackathon…").
-// We target both MUI class names and a data attribute Headlamp may set.
+// ── CSS: hide AppBar, error banners; Fiori styling ────────────────────────────
 function applyKioskStyles() {
   const styleId = 'kiosk-mode-styles';
   document.getElementById(styleId)?.remove();
@@ -110,76 +106,123 @@ function applyKioskStyles() {
   const style = document.createElement('style');
   style.id = styleId;
   style.innerHTML = `
-    /* ── Hide top app bar (logo, search, settings, user icon) ── */
-    nav.MuiAppBar-root,
+    /* ── Fiori Horizon design tokens ── */
+    :root {
+      --kiosk-primary:   ${FIORI.primaryBlue};
+      --kiosk-page-bg:   ${FIORI.pageBackground};
+      --kiosk-card-bg:   ${FIORI.cardBackground};
+      --kiosk-body-text: ${FIORI.bodyText};
+      --kiosk-muted:     ${FIORI.mutedText};
+      --kiosk-success:   ${FIORI.successGreen};
+      --kiosk-warning:   ${FIORI.warningAmber};
+      --kiosk-error:     ${FIORI.errorRed};
+      --kiosk-radius:    ${FIORI.borderRadius};
+    }
+
+    /* ── Page & body background ── */
+    body, #root {
+      background-color: var(--kiosk-page-bg) !important;
+    }
+
+    /* ── Hide the Headlamp AppBar (top bar with logo, search, user) ── */
+    header[class*="MuiAppBar"],
+    nav[class*="MuiAppBar"],
+    [class*="MuiAppBar-root"],
     nav[aria-label="Appbar Tools"] {
       display: none !important;
     }
 
-    /* ── Hide specific built-in sidebar entries by aria-label ── */
-    /* registerSidebarEntryFilter only works for plugin-registered entries;  */
-    /* built-in entries must be hidden via CSS.                               */
-    nav a[aria-label="Storage"],
-    nav a[aria-label="Network"],
-    nav a[aria-label="Gateway (beta)"] {
-      display: none !important;
-    }
-
-    /* ── Hide all alerts (errors, warnings, info banners) everywhere ── */
-    /* This covers: cluster connection errors, permission warnings, etc.     */
-    [role="alert"],
-    .MuiAlert-root,
-    .MuiAlert-standardError,
-    .MuiAlert-filledError,
-    .MuiAlert-outlinedError,
-    .MuiAlert-standardInfo,
-    .MuiAlert-standardWarning,
-    [class*="clusterError"],
-    [class*="ClusterGroupError"] {
-      display: none !important;
-    }
-
-    /* ── Hide the cluster-error banner box (wraps "Something went wrong…") ── */
-    /* Headlamp renders this as a plain MuiBox directly inside <main>, not   */
-    /* as an alert, so [role="alert"] does not catch it. Target by the MUI   */
-    /* hash class and by structural selector (direct child of main with only  */
-    /* text + a button, no MuiPaper children).                                */
-    main > .MuiBox-root.css-1xoun1b,
-    main > .MuiBox-root:not(:has(main)):not(:has(.MuiPaper-root)):not(:has(h1)):not(:has(table)) {
-      display: none !important;
-    }
-
-    /* ── Remove top padding left over from the now-hidden AppBar ── */
-    .MuiBox-root.css-1uqao6u {
+    /* ── Remove AppBar top-padding; make root a plain flex row ── */
+    #root > div[class*="MuiBox"] {
       padding-top: 0 !important;
       flex-direction: row !important;
     }
 
-    /* ── Expand main content area to fill the viewport ── */
+    /* ── Main content fills the viewport ── */
     main {
       margin-left: 0 !important;
       padding: 16px !important;
       width: 100% !important;
       max-width: 100% !important;
       flex: 1 !important;
+      background-color: var(--kiosk-page-bg) !important;
     }
 
-    /* ── Make the content+sidebar row fill full height ── */
-    .MuiBox-root.css-1xd9zsj {
+    /* ── Row wrapper fills full height ── */
+    #root > div[class*="MuiBox"] > div[class*="MuiBox"] {
       width: 100% !important;
+    }
+
+    /* ── Sidebar selected-item highlight (Fiori blue) ── */
+    /* registerAppTheme does not auto-activate — CSS is the reliable path. */
+    nav [class*="MuiListItemButton-root"][class*="Mui-selected"],
+    nav [class*="MuiListItemButton-root"][class*="Mui-selected"]:hover {
+      background-color: ${FIORI.sidebarSelectedBg} !important;
+      color: ${FIORI.sidebarSelectedFg} !important;
+    }
+    nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiListItemText-primary"],
+    nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiSvgIcon-root"] {
+      color: ${FIORI.sidebarSelectedFg} !important;
+    }
+
+    /* ── Hide specific built-in sidebar entries by aria-label ── */
+    nav a[aria-label="Storage"],
+    nav a[aria-label="Network"],
+    nav a[aria-label="Gateway (beta)"] {
+      display: none !important;
+    }
+
+    /* ── Hide all alerts / error banners ── */
+    [role="alert"],
+    [class*="MuiAlert-root"],
+    [class*="MuiAlert-standard"],
+    [class*="MuiAlert-filled"],
+    [class*="MuiAlert-outlined"],
+    [class*="clusterError"],
+    [class*="ClusterGroupError"] {
+      display: none !important;
+    }
+
+    /* ── Hide structural cluster-error box inside <main> ── */
+    main > [class*="MuiBox-root"]:not(:has([class*="MuiPaper"])):not(:has(h1)):not(:has(table)):not(:has(nav)) {
+      display: none !important;
+    }
+
+    /* ── Fiori-aligned card radius & background ── */
+    [class*="MuiPaper-root"][class*="MuiCard-root"],
+    [class*="MuiPaper-elevation"] {
+      border-radius: var(--kiosk-radius) !important;
+      background-color: var(--kiosk-card-bg) !important;
+    }
+
+    /* ── Body text colour ── */
+    body, [class*="MuiTypography-body"] {
+      color: var(--kiosk-body-text) !important;
+    }
+
+    /* ── Primary buttons ── */
+    [class*="MuiButton-containedPrimary"] {
+      background-color: var(--kiosk-primary) !important;
+      border-radius: 4px !important;
+    }
+    [class*="MuiButton-containedPrimary"]:hover {
+      background-color: #0057C2 !important;
+    }
+
+    /* ── Links ── */
+    a:not([class*="MuiButton"]) {
+      color: var(--kiosk-primary) !important;
     }
   `;
 
   document.head.appendChild(style);
 
-  // Imperatively hide all alert nodes and cluster-error banner boxes.
-  // CSS rules may lose to higher-specificity MUI styles; this ensures they
-  // are always hidden regardless of position in the tree.
-  document.querySelectorAll('[role="alert"], .MuiAlert-root').forEach((el) => {
+  // Belt-and-suspenders: imperatively suppress any alerts that win specificity
+  document.querySelectorAll('[role="alert"], [class*="MuiAlert-root"]').forEach((el) => {
     (el as HTMLElement).style.setProperty('display', 'none', 'important');
   });
-  // Hide the MuiBox cluster-error container ("Something went wrong…")
-  // which is a direct child of <main> but not an alert element.
+
+  // Suppress text-matched cluster-error banners inside <main>
   const main = document.querySelector('main');
   if (main) {
     Array.from(main.children).forEach((el) => {
