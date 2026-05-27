@@ -7,12 +7,14 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx @kinvolk/headlamp-plugin build"
   },
-  "keywords": ["Kiosk"],
+  "keywords": [
+    "Kiosk"
+  ],
   "author": "Me",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.13.1",
+    "@kinvolk/headlamp-plugin": "^0.14.0",
     "@types/react": "^18.3.28"
   }
 }
