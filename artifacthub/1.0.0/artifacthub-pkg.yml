@@ -10,7 +10,6 @@ changes:
 annotations:
   headlamp/plugin/archive-url: >-
     https://github.com/openmcp-project/kiosk-headlamp-plugin/releases/download/v1.0.0/headlamp-kiosk-1.0.0.tar.gz
-  # Placeholder — automatically replaced by the release workflow after building the tar.gz.
   headlamp/plugin/archive-checksum: sha256:fa9d5ccaa074bf51bf8f312d0cbadde8451c77dfc8a3271fdd19ada22da8e576
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: in-cluster,web
