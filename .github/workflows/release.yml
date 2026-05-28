@@ -48,7 +48,7 @@ jobs:
           mkdir -p "artifacthub/${SEMVER}"
           cp "$TEMPLATE" "$PKGFILE"
           sed -i "s|version: .*|version: ${SEMVER}|" "$PKGFILE"
-          sed -i "s|/releases/download/v[^/]*/headlamp-kiosk-[^.]*\.tar\.gz|/releases/download/${VERSION}/headlamp-kiosk-${SEMVER}.tar.gz|" "$PKGFILE"
+          sed -i "s|https://github.com/openmcp-project/[^/]*/releases/download/v[^/]*/headlamp-kiosk-[^.]*\.tar\.gz|https://github.com/openmcp-project/kiosk-headlamp-plugin/releases/download/${VERSION}/headlamp-kiosk-${SEMVER}.tar.gz|" "$PKGFILE"
           sed -i "s|sha256:.*|sha256:${CHECKSUM}|" "$PKGFILE"
           echo "PKGFILE=${PKGFILE}" >> $GITHUB_ENV
 
