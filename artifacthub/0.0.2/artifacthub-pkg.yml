@@ -1,7 +1,7 @@
-version: 1.0.0
+version: 0.0.2
 name: headlamp_kiosk
 displayName: Kiosk Mode
-createdAt: "2026-05-27T00:00:00Z"
+createdAt: "2026-05-28T00:00:00Z"
 description: Hides the sidebar and top bar, expands the main content to full viewport, and auto-redirects the cluster root page. Uses UI5 coloring scheme.
 logoURL: "https://avatars.githubusercontent.com/u/173142503?s=200&v=4"
 changes:
@@ -9,7 +9,7 @@ changes:
     description: "Initial release"
 annotations:
   headlamp/plugin/archive-url: >-
-    https://github.com/openmcp-project/kiosk-headlamp-plugin/releases/download/v1.0.0/headlamp-kiosk-1.0.0.tar.gz
-  headlamp/plugin/archive-checksum: sha256:fa9d5ccaa074bf51bf8f312d0cbadde8451c77dfc8a3271fdd19ada22da8e576
+    https://github.com/openmcp-project/kiosk-headlamp-plugin/releases/download/v0.0.2/headlamp-kiosk-0.0.2.tar.gz
+  headlamp/plugin/archive-checksum: sha256:01103d1cd406d865d430941a6e9303f42c37c30667dbfee393355288c37a3a6b
   headlamp/plugin/version-compat: ">=0.22"
   headlamp/plugin/distro-compat: in-cluster,web

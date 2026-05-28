@@ -43,7 +43,7 @@ jobs:
           CHECKSUM=$(sha256sum ${{ env.TARBALL }} | awk '{print $1}')
           SEMVER=${{ env.SEMVER }}
           VERSION=${{ github.event.inputs.version }}
-          TEMPLATE="artifacthub/1.0.0/artifacthub-pkg.yml"
+          TEMPLATE="artifacthub/0.0.2/artifacthub-pkg.yml"
           PKGFILE="artifacthub/${SEMVER}/artifacthub-pkg.yml"
           mkdir -p "artifacthub/${SEMVER}"
           cp "$TEMPLATE" "$PKGFILE"

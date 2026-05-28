@@ -1,6 +1,6 @@
 {
   "name": "kiosk-mode",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "description": "Kiosk mode plugin for Headlamp",
   "main": "main.js",
   "scripts": {
