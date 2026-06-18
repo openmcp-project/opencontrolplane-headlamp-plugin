@@ -1,16 +1,18 @@
+import React, { useEffect, useState } from 'react';
 import {
+  registerRoute,
+  registerSidebarEntry,
   registerSidebarEntryFilter,
   registerAppBarAction,
   registerAppTheme,
+  K8s,
 } from '@kinvolk/headlamp-plugin/lib';
 
 // ── Fiori Horizon design tokens ───────────────────────────────────────────────
-// These mirror the SAP Fiori Horizon palette used by the ManagedControlPlane UI
-// so that the embedded Headlamp view feels visually coherent.
 const FIORI = {
   primaryBlue:        '#0070F2',
-  sidebarSelectedBg:  '#b3d9f7', // light SAP blue — visible but not full-filled
-  sidebarSelectedFg:  '#0a3d6b', // dark navy for contrast on light bg
+  sidebarSelectedBg:  '#b3d9f7',
+  sidebarSelectedFg:  '#0a3d6b',
   pageBackground:     '#F5F6F7',
   cardBackground:     '#FFFFFF',
   bodyText:           '#1D2D3E',
@@ -31,30 +33,272 @@ registerAppTheme({
   },
 });
 
-// ── Sidebar entries to remove completely ─────────────────────────────────────
-// registerSidebarEntryFilter only filters plugin-registered entries, not
-// Headlamp's built-in sidebar items. Those are hidden via CSS (aria-label
-// selectors) in applyKioskStyles below.
+// ── Sidebar entries to remove completely ──────────────────────────────────────
 const HIDDEN_SIDEBAR_ENTRIES = new Set([
-  'home',       // Home / overview section
-  'storage',    // PVCs, PVs, StorageClasses
-  'network',    // Services, Ingresses, NetworkPolicies, …
-  'gatewayapi', // Gateways, HTTPRoutes, …
+  'home',
+  'storage',
+  'network',
+  'gatewayapi',
 ]);
 
 registerSidebarEntryFilter(entry =>
   HIDDEN_SIDEBAR_ENTRIES.has(entry.name) ? null : entry
 );
 
-// ── Remove all app-bar actions (search, notifications, settings, user) ───────
-// The AppBar itself is hidden via CSS, but stripping the actions prevents them
-// from being keyboard-accessible or from interfering with layout.
+// ── Remove all app-bar actions ────────────────────────────────────────────────
 registerAppBarAction({
   id: 'kiosk-strip-appbar-actions',
   processor: () => [],
 });
 
-// ── Default namespace filter to "default" ────────────────────────────────────
+// ── Component detection ───────────────────────────────────────────────────────
+//
+// Each component is detected by probing its own API on the MCP cluster.
+//
+// MCP v1 spec.components → probe endpoint:
+//   crossplane              → /apis/pkg.crossplane.io/v1/providers
+//   flux                    → /apis/kustomize.toolkit.fluxcd.io/v1/kustomizations
+//   btpServiceOperator      → /apis/services.cloud.sap.com/v1/servicebindings
+//   externalSecretsOperator → /apis/external-secrets.io/v1beta1/externalsecrets
+//   kyverno                 → /apis/kyverno.io/v1/policies
+
+function getApiProxy(): any {
+  return (K8s as any).ApiProxy ?? (window as any).pluginLib?.ApiProxy;
+}
+
+async function apiExists(path: string): Promise<boolean> {
+  try {
+    await getApiProxy().request(path, { isJSON: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export interface ComponentStatus {
+  name: string;
+  label: string;
+  installed: boolean | null;
+}
+
+export function useInstalledComponents(): ComponentStatus[] {
+  const [crossplane, setCrossplane] = useState<boolean | null>(null);
+  const [flux, setFlux] = useState<boolean | null>(null);
+  const [btp, setBtp] = useState<boolean | null>(null);
+  const [eso, setEso] = useState<boolean | null>(null);
+  const [kyverno, setKyverno] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    apiExists('/apis/pkg.crossplane.io/v1/providers').then(setCrossplane);
+    apiExists('/apis/kustomize.toolkit.fluxcd.io/v1/kustomizations').then(setFlux);
+    apiExists('/apis/services.cloud.sap.com/v1/servicebindings').then(setBtp);
+    apiExists('/apis/external-secrets.io/v1beta1/externalsecrets').then(setEso);
+    apiExists('/apis/kyverno.io/v1/policies').then(setKyverno);
+  }, []);
+
+  return [
+    { name: 'crossplane',              label: 'Crossplane',                installed: crossplane },
+    { name: 'flux',                    label: 'Flux',                      installed: flux },
+    { name: 'btpServiceOperator',      label: 'BTP Service Operator',      installed: btp },
+    { name: 'externalSecretsOperator', label: 'External Secrets Operator', installed: eso },
+    { name: 'kyverno',                 label: 'Kyverno',                   installed: kyverno },
+    // v2 placeholders — uncomment when needed:
+    // { name: 'certManager',          label: 'cert-manager',              installed: null },
+  ];
+}
+
+// ── Overview page ─────────────────────────────────────────────────────────────
+
+interface Provider {
+  name: string;
+  version: string;
+  healthy: boolean | null;
+}
+
+function useProviders(): { providers: Provider[] | null; error: boolean } {
+  const [providers, setProviders] = useState<Provider[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    getApiProxy()
+      .request('/apis/pkg.crossplane.io/v1/providers', { isJSON: true })
+      .then((res: any) => {
+        setProviders(
+          (res?.items ?? []).map((item: any) => {
+            const conditions: any[] = item.status?.conditions ?? [];
+            const healthy = conditions.find((c: any) => c.type === 'Healthy');
+            return {
+              name: item.metadata?.name ?? '',
+              version: item.status?.currentRevision ?? '—',
+              healthy: healthy ? healthy.status === 'True' : null,
+            };
+          })
+        );
+      })
+      .catch(() => setError(true));
+  }, []);
+
+  return { providers, error };
+}
+
+function StatusChip({ installed }: { installed: boolean | null }) {
+  if (installed === null) {
+    return React.createElement('span', { style: { color: '#888', fontSize: 12 } }, 'Loading…');
+  }
+  return React.createElement(
+    'span',
+    {
+      style: {
+        display: 'inline-block',
+        padding: '2px 10px',
+        borderRadius: 12,
+        background: installed ? '#4caf50' : 'rgba(128,128,128,0.2)',
+        color: installed ? '#fff' : '#888',
+        fontSize: 12,
+        fontWeight: 600,
+      },
+    },
+    installed ? 'Installed' : 'Not installed'
+  );
+}
+
+function HealthChip({ healthy }: { healthy: boolean | null }) {
+  const color = healthy === true ? '#4caf50' : healthy === false ? '#f44336' : '#888';
+  const label = healthy === true ? 'Healthy' : healthy === false ? 'Unhealthy' : 'Unknown';
+  return React.createElement(
+    'span',
+    {
+      style: {
+        display: 'inline-block',
+        padding: '2px 10px',
+        borderRadius: 12,
+        background: color,
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 600,
+      },
+    },
+    label
+  );
+}
+
+function OverviewPage() {
+  const components = useInstalledComponents();
+  const { providers, error: providersError } = useProviders();
+
+  const crossplaneInstalled = components.find(c => c.name === 'crossplane')?.installed ?? null;
+
+  const sectionStyle: React.CSSProperties = { marginBottom: 32 };
+  const headingStyle: React.CSSProperties = {
+    fontSize: 18,
+    fontWeight: 600,
+    marginBottom: 12,
+    borderBottom: '1px solid rgba(128,128,128,0.2)',
+    paddingBottom: 8,
+  };
+  const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+  const thStyle: React.CSSProperties = {
+    textAlign: 'left',
+    padding: '8px 12px',
+    fontWeight: 600,
+    fontSize: 13,
+    opacity: 0.6,
+    borderBottom: '1px solid rgba(128,128,128,0.15)',
+  };
+  const tdStyle: React.CSSProperties = {
+    padding: '10px 12px',
+    borderBottom: '1px solid rgba(128,128,128,0.1)',
+    fontSize: 14,
+  };
+
+  return React.createElement(
+    'div',
+    { style: { padding: 24, maxWidth: 800 } },
+    React.createElement('h1', { style: { fontSize: 24, fontWeight: 700, marginBottom: 24 } }, 'Control Plane Overview'),
+
+    // ── Installed Components ────────────────────────────────────────────────
+    React.createElement(
+      'div',
+      { style: sectionStyle },
+      React.createElement('div', { style: headingStyle }, 'Components'),
+      React.createElement(
+        'table',
+        { style: tableStyle },
+        React.createElement(
+          'thead',
+          null,
+          React.createElement(
+            'tr',
+            null,
+            React.createElement('th', { style: thStyle }, 'Component'),
+            React.createElement('th', { style: thStyle }, 'Status')
+          )
+        ),
+        React.createElement(
+          'tbody',
+          null,
+          components.map((c) =>
+            React.createElement(
+              'tr',
+              { key: c.name },
+              React.createElement('td', { style: tdStyle }, c.label),
+              React.createElement(
+                'td',
+                { style: tdStyle },
+                React.createElement(StatusChip, { installed: c.installed })
+              )
+            )
+          )
+        )
+      )
+    ),
+
+    // ── Crossplane Providers ────────────────────────────────────────────────
+    crossplaneInstalled === false
+      ? null
+      : React.createElement(
+          'div',
+          { style: sectionStyle },
+          React.createElement('div', { style: headingStyle }, 'Crossplane Providers'),
+          providersError
+            ? React.createElement('span', { style: { color: '#888', fontSize: 14 } }, 'Crossplane not installed')
+            : providers === null
+            ? React.createElement('span', { style: { color: '#888', fontSize: 14 } }, 'Loading…')
+            : providers.length === 0
+            ? React.createElement('span', { style: { color: '#888', fontSize: 14 } }, 'No providers installed')
+            : React.createElement(
+                'table',
+                { style: tableStyle },
+                React.createElement(
+                  'thead',
+                  null,
+                  React.createElement(
+                    'tr',
+                    null,
+                    React.createElement('th', { style: thStyle }, 'Name'),
+                    React.createElement('th', { style: thStyle }, 'Version'),
+                    React.createElement('th', { style: thStyle }, 'Health')
+                  )
+                ),
+                React.createElement(
+                  'tbody',
+                  null,
+                  providers.map((p) =>
+                    React.createElement(
+                      'tr',
+                      { key: p.name },
+                      React.createElement('td', { style: tdStyle }, p.name),
+                      React.createElement('td', { style: { ...tdStyle, fontFamily: 'monospace', fontSize: 13 } }, p.version),
+                      React.createElement('td', { style: tdStyle }, React.createElement(HealthChip, { healthy: p.healthy }))
+                    )
+                  )
+                )
+              )
+        )
+  );
+}
+
+// ── Default namespace filter to "default" ─────────────────────────────────────
 function forceDefaultNamespace() {
   try {
     const match = window.location.pathname.match(/^\/c\/([^/]+)/);
@@ -69,7 +313,7 @@ function forceDefaultNamespace() {
   } catch (_) {}
 }
 
-// ── Force sidebar into collapsed (icon-only) state ───────────────────────────
+// ── Force sidebar into collapsed (icon-only) state ────────────────────────────
 function forceSidebarCollapsed() {
   try {
     localStorage.setItem('sidebar', JSON.stringify({ shrink: true }));
@@ -98,7 +342,7 @@ function forceSidebarCollapsed() {
   }
 }
 
-// ── CSS: hide AppBar, error banners; Fiori styling ────────────────────────────
+// ── CSS: kiosk chrome removal + Fiori styling + OCP sidebar ordering ──────────
 function applyKioskStyles() {
   const styleId = 'kiosk-mode-styles';
   document.getElementById(styleId)?.remove();
@@ -154,7 +398,6 @@ function applyKioskStyles() {
     }
 
     /* ── Sidebar selected-item highlight (Fiori blue) ── */
-    /* registerAppTheme does not auto-activate — CSS is the reliable path. */
     nav [class*="MuiListItemButton-root"][class*="Mui-selected"],
     nav [class*="MuiListItemButton-root"][class*="Mui-selected"]:hover {
       background-color: ${FIORI.sidebarSelectedBg} !important;
@@ -213,6 +456,27 @@ function applyKioskStyles() {
     a:not([class*="MuiButton"]) {
       color: var(--kiosk-primary) !important;
     }
+
+    /* ── Hide "Create / Apply" button ── */
+    button[aria-label="Create / Apply"],
+    button[aria-label="Create/Apply"] {
+      display: none !important;
+    }
+
+    /* ── OCP sidebar ordering: Overview → Crossplane → Flux → rest ── */
+    ul.MuiList-padding {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    ul.MuiList-padding > li:has(a[href*="/ocp/overview"]) { order: -300 !important; }
+    ul.MuiList-padding > li:has(a[href*="/crossplane"])   { order: -200 !important; }
+    ul.MuiList-padding > li:has(a[href*="/flux"])         { order: -100 !important; }
+
+    ul.MuiList-padding > li:has(a[href*="/flux"]) {
+      border-bottom: 1px solid rgba(128,128,128,0.3) !important;
+      margin-bottom: 4px !important;
+      padding-bottom: 4px !important;
+    }
   `;
 
   document.head.appendChild(style);
@@ -256,3 +520,21 @@ if (typeof window !== 'undefined') {
   // Re-collapse sidebar on every navigation so the user can't expand it
   window.addEventListener('popstate', forceSidebarCollapsed);
 }
+
+// ── OCP: sidebar entry + route ────────────────────────────────────────────────
+
+registerSidebarEntry({
+  parent: null,
+  name: 'ocp-overview',
+  label: 'Overview',
+  url: '/ocp/overview',
+  icon: 'mdi:view-dashboard-outline',
+});
+
+registerRoute({
+  path: '/ocp/overview',
+  sidebar: 'ocp-overview',
+  name: 'ocpOverview',
+  exact: true,
+  component: OverviewPage,
+});
