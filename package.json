@@ -1,20 +1,21 @@
 {
   "name": "kiosk-mode",
   "version": "0.0.2",
-  "description": "Kiosk mode plugin for Headlamp",
+  "description": "Kiosk mode plugin for Headlamp — kiosk chrome removal, Fiori styling, and OCP overview page",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx @kinvolk/headlamp-plugin build"
   },
   "keywords": [
-    "Kiosk"
+    "Kiosk",
+    "openMCP",
+    "Headlamp"
   ],
-  "author": "Me",
-  "license": "ISC",
+  "author": "openmcp-project",
+  "license": "Apache-2.0",
   "type": "commonjs",
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.14.0",
-    "@types/react": "^18.3.28"
+    "@kinvolk/headlamp-plugin": "0.13.1",
+    "@types/react": "18.3.28"
   }
 }
