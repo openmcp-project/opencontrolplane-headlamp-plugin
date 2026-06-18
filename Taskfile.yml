@@ -21,6 +21,7 @@ tasks:
           echo "error: no headlamp pod found — run: task dev" >&2
           exit 1
         fi
-        echo "→ syncing to pod ${POD}:/headlamp/plugins/{{.PLUGIN_DIR}}/main.js ..."
+        echo "→ syncing to pod ${POD}:/headlamp/plugins/{{.PLUGIN_DIR}}/ ..."
         kubectl --context {{.CONTEXT}} cp dist/main.js "{{.NAMESPACE}}/${POD}:/headlamp/plugins/{{.PLUGIN_DIR}}/main.js"
+        kubectl --context {{.CONTEXT}} cp package.json "{{.NAMESPACE}}/${POD}:/headlamp/plugins/{{.PLUGIN_DIR}}/package.json"
         echo "✓ kiosk plugin synced — hard-refresh the browser to pick up changes"
