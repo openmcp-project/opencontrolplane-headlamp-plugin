@@ -25,13 +25,6 @@ npm install
 
 The cluster setup and plugin iteration is managed centrally from the `ui-frontend` repo. Both this plugin and the crossplane plugin are built and synced together.
 
-**One-time setup** (creates the kind cluster, deploys Headlamp with latest ArtifactHub plugin releases, port-forwards to `localhost:8090`):
-
-```bash
-# from ui-frontend/ or from this repo
-task dev
-```
-
 **Every time you change plugin code** (builds + hot-syncs all local plugins into the pod, no restart needed):
 
 ```bash
@@ -39,9 +32,13 @@ task dev
 task update
 ```
 
-Then hard-refresh the browser (`Cmd+Shift+R`) to pick up the new build.
+**One-time setup** (creates the kind cluster, deploys Headlamp with latest ArtifactHub plugin releases, port-forwards to `localhost:8090`):
+```bash
+# from ui-frontend/ or from this repo
+task dev
+```
 
-> **Tip:** Kiosk mode hides all nav, making it hard to navigate during dev. Use `task update` to temporarily swap in a build with kiosk disabled.
+Then hard-refresh the browser (`Cmd+Shift+R`) to pick up the new build.
 
 ## Release
 
