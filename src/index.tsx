@@ -344,7 +344,7 @@ function forceSidebarCollapsed() {
 }
 
 // ── CSS: kiosk chrome removal + Fiori styling + OCP sidebar ordering ──────────
-function applyKioskStyles() {
+function applyOCPStyles() {
   const gradient = 'linear-gradient(180deg, transparent 0%, rgba(240,253,250,0.35) 50%, transparent 100%)';
   [document.documentElement, document.body].forEach((el) => {
     el.style.setProperty('background-color', '#ffffff', 'important');
@@ -485,10 +485,10 @@ function applyKioskStyles() {
     ul.MuiList-padding > li:has(a[href*="/crossplane"])   { order: -200 !important; }
     ul.MuiList-padding > li:has(a[href*="/flux"])         { order: -100 !important; }
 
-    ul.MuiList-padding > li:has(a[href*="/flux"]) {
-      border-bottom: 1px solid rgba(128,128,128,0.3) !important;
-      margin-bottom: 4px !important;
-      padding-bottom: 4px !important;
+    ul.MuiList-padding > li:has(a[href$="/c/main/"]) {
+      border-top: 1px solid rgba(128,128,128,0.3) !important;
+      margin-top: 4px !important;
+      padding-top: 4px !important;
     }
   `;
 
