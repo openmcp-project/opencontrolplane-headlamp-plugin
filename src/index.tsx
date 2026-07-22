@@ -8,7 +8,7 @@ import {
   K8s,
 } from '@kinvolk/headlamp-plugin/lib';
 
-const { Chip } = (window as any).pluginLib?.MuiCore ?? {};
+const { Chip, Button, Menu, MenuItem } = (window as any).pluginLib?.MuiCore ?? {};
 
 function conditionChip(healthy: boolean | null) {
   const color = healthy === true ? '#4caf50' : healthy === false ? '#f44336' : '#9e9e9e';
@@ -92,36 +92,147 @@ async function apiExists(path: string): Promise<boolean> {
   }
 }
 
+// Read an installed component version from its controller Deployment.
+// Tries each candidate path in order; for the first Deployment found, reads
+// the `app.kubernetes.io/version` label, then falls back to the container
+// image tag. Returns null if nothing usable is found on any path.
+async function fetchDeploymentVersion(paths: string[]): Promise<string | null> {
+  for (const path of paths) {
+    try {
+      const res = await getApiProxy().request(path, { isJSON: true });
+      const items: any[] = res?.items ?? (res?.kind === 'Deployment' ? [res] : []);
+      if (!items.length) continue;
+      const d = items[0];
+      const label =
+        d.metadata?.labels?.['app.kubernetes.io/version'] ??
+        d.spec?.template?.metadata?.labels?.['app.kubernetes.io/version'];
+      if (label) return String(label);
+      const img: string = d.spec?.template?.spec?.containers?.[0]?.image ?? '';
+      if (img && !img.includes('@')) {
+        const tag = img.split(':')[1] ?? '';
+        if (tag && tag !== 'latest') return tag;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
+}
+
 export interface ComponentStatus {
   name: string;
   label: string;
   installed: boolean | null;
+  version: string | null; // null = loading, '—' = unknown/not found
+  docsUrl: string;
 }
 
+interface ComponentConfig {
+  name: string;
+  label: string;
+  probe: string;
+  versionPaths: string[];
+  docsUrl: string;
+}
+
+const COMPONENTS: ComponentConfig[] = [
+  {
+    name: 'crossplane',
+    label: 'Crossplane',
+    probe: '/apis/pkg.crossplane.io/v1/providers',
+    versionPaths: [
+      '/apis/apps/v1/deployments?labelSelector=app.kubernetes.io/component=cloud-infrastructure-controller',
+      '/apis/apps/v1/namespaces/crossplane-system/deployments?labelSelector=app=crossplane',
+    ],
+    docsUrl: 'https://docs.crossplane.io/latest/',
+  },
+  {
+    name: 'flux',
+    label: 'Flux',
+    probe: '/apis/kustomize.toolkit.fluxcd.io/v1/kustomizations',
+    versionPaths: [
+      '/apis/apps/v1/deployments?labelSelector=app.kubernetes.io/part-of=flux',
+      '/apis/apps/v1/namespaces/flux-system/deployments?labelSelector=app.kubernetes.io/part-of=flux',
+    ],
+    docsUrl: 'https://fluxcd.io/flux/',
+  },
+  {
+    name: 'btpServiceOperator',
+    label: 'BTP Service Operator',
+    probe: '/apis/services.cloud.sap.com/v1/servicebindings',
+    versionPaths: [
+      '/apis/apps/v1/deployments?labelSelector=app.kubernetes.io/name=sap-btp-operator',
+      '/apis/apps/v1/namespaces/sap-btp-operator/deployments',
+    ],
+    docsUrl: 'https://github.com/SAP/sap-btp-service-operator#readme',
+  },
+  {
+    name: 'externalSecretsOperator',
+    label: 'External Secrets Operator',
+    probe: '/apis/external-secrets.io/v1/externalsecrets',
+    versionPaths: [
+      '/apis/apps/v1/deployments?labelSelector=app.kubernetes.io/name=external-secrets',
+      '/apis/apps/v1/namespaces/external-secrets/deployments?labelSelector=app.kubernetes.io/name=external-secrets',
+    ],
+    docsUrl: 'https://external-secrets.io/latest/',
+  },
+  {
+    name: 'kyverno',
+    label: 'Kyverno',
+    probe: '/apis/kyverno.io/v1/policies',
+    versionPaths: [
+      '/apis/apps/v1/deployments?labelSelector=app.kubernetes.io/part-of=kyverno',
+      '/apis/apps/v1/namespaces/kyverno/deployments?labelSelector=app.kubernetes.io/part-of=kyverno',
+    ],
+    docsUrl: 'https://kyverno.io/docs/',
+  },
+  // v2 placeholders — add config entries when needed:
+  // { name: 'certManager', label: 'cert-manager', probe: '…', versionPaths: […], docsUrl: '…' },
+];
+
 export function useInstalledComponents(): ComponentStatus[] {
-  const [crossplane, setCrossplane] = useState<boolean | null>(null);
-  const [flux, setFlux] = useState<boolean | null>(null);
-  const [btp, setBtp] = useState<boolean | null>(null);
-  const [eso, setEso] = useState<boolean | null>(null);
-  const [kyverno, setKyverno] = useState<boolean | null>(null);
+  const [installed, setInstalled] = useState<Record<string, boolean | null>>(() =>
+    Object.fromEntries(COMPONENTS.map((c) => [c.name, null]))
+  );
+  const [versions, setVersions] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(COMPONENTS.map((c) => [c.name, null]))
+  );
+  // Bumped when the host tells us a component was installed/changed, so we re-probe
+  // without a full page reload. See host postMessage in ManagedControlPlanePage.tsx.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    apiExists('/apis/pkg.crossplane.io/v1/providers').then(setCrossplane);
-    apiExists('/apis/kustomize.toolkit.fluxcd.io/v1/kustomizations').then(setFlux);
-    apiExists('/apis/services.cloud.sap.com/v1/servicebindings').then(setBtp);
-    apiExists('/apis/external-secrets.io/v1beta1/externalsecrets').then(setEso);
-    apiExists('/apis/kyverno.io/v1/policies').then(setKyverno);
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.source !== 'ocp-host') return;
+      if (event.data?.action !== 'componentsChanged') return;
+      setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
-  return [
-    { name: 'crossplane',              label: 'Crossplane',                installed: crossplane },
-    { name: 'flux',                    label: 'Flux',                      installed: flux },
-    { name: 'btpServiceOperator',      label: 'BTP Service Operator',      installed: btp },
-    { name: 'externalSecretsOperator', label: 'External Secrets Operator', installed: eso },
-    { name: 'kyverno',                 label: 'Kyverno',                   installed: kyverno },
-    // v2 placeholders — uncomment when needed:
-    // { name: 'certManager',          label: 'cert-manager',              installed: null },
-  ];
+  useEffect(() => {
+    COMPONENTS.forEach((c) => {
+      // Existence probe — unchanged behavior.
+      apiExists(c.probe).then((ok) =>
+        setInstalled((prev) => ({ ...prev, [c.name]: ok }))
+      );
+      // Version fetch — fully independent; a failure never affects install status.
+      // Resolve unknown to '—' so the UI can distinguish loading (null) from not-found.
+      fetchDeploymentVersion(c.versionPaths)
+        .then((v) => setVersions((prev) => ({ ...prev, [c.name]: v ?? '—' })))
+        .catch(() => setVersions((prev) => ({ ...prev, [c.name]: '—' })));
+    });
+  }, [refreshKey]);
+
+  return COMPONENTS.map((c) => ({
+    name: c.name,
+    label: c.label,
+    installed: installed[c.name],
+    version: versions[c.name],
+    docsUrl: c.docsUrl,
+  }));
 }
 
 // ── Overview page ─────────────────────────────────────────────────────────────
@@ -183,6 +294,90 @@ function HealthChip({ healthy }: { healthy: boolean | null }) {
   return conditionChip(healthy);
 }
 
+// Ask the host app (ui-frontend) to open its component-install wizard. The plugin
+// runs inside a same-origin iframe; it cannot install a component itself (the
+// ManagedControlPlane lives on the Crate cluster, out of the iframe's reach), so
+// installation is delegated to the host via postMessage. See host listener in
+// ManagedControlPlanePage.tsx.
+function requestInstallWizard(componentName: string) {
+  if (window.parent === window) return; // not embedded — nothing to notify
+  window.parent.postMessage(
+    { source: 'ocp-headlamp-plugin', action: 'openInstallWizard', component: componentName },
+    window.location.origin
+  );
+}
+
+function openDocumentation(docsUrl: string) {
+  window.open(docsUrl, '_blank', 'noopener,noreferrer');
+}
+
+// "Details" dropdown in the Actions column: Install Service + Open Documentation.
+function DetailsMenu({ component }: { component: ComponentStatus }) {
+  const [anchorEl, setAnchorEl] = useState<any>(null);
+  const open = Boolean(anchorEl);
+
+  const items = [
+    { key: 'install', label: 'Install Service', onClick: () => requestInstallWizard(component.name) },
+    { key: 'docs', label: 'Open Documentation', onClick: () => openDocumentation(component.docsUrl) },
+  ];
+
+  // MUI is available at runtime via pluginLib; fall back to a native <select>
+  // (mirrors the Chip fallback pattern) if it isn't.
+  if (Button && Menu && MenuItem) {
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(
+        Button,
+        {
+          size: 'small',
+          variant: 'outlined',
+          endIcon: React.createElement('span', { style: { fontSize: 16, lineHeight: 1 } }, '›'),
+          onClick: (e: any) => setAnchorEl(e.currentTarget),
+        },
+        'Details'
+      ),
+      React.createElement(
+        Menu,
+        {
+          anchorEl,
+          open,
+          onClose: () => setAnchorEl(null),
+        },
+        items.map((item) =>
+          React.createElement(
+            MenuItem,
+            {
+              key: item.key,
+              onClick: () => {
+                setAnchorEl(null);
+                item.onClick();
+              },
+            },
+            item.label
+          )
+        )
+      )
+    );
+  }
+
+  // Fallback: native <select> acting as a lightweight dropdown.
+  return React.createElement(
+    'select',
+    {
+      style: { fontSize: 13, padding: '2px 6px' },
+      value: '',
+      onChange: (e: any) => {
+        const chosen = items.find((i) => i.key === e.target.value);
+        e.target.value = '';
+        chosen?.onClick();
+      },
+    },
+    React.createElement('option', { value: '', disabled: true }, 'Details ›'),
+    items.map((item) => React.createElement('option', { key: item.key, value: item.key }, item.label))
+  );
+}
+
 function OverviewPage() {
   const components = useInstalledComponents();
   const { providers, error: providersError } = useProviders();
@@ -232,7 +427,9 @@ function OverviewPage() {
             'tr',
             null,
             React.createElement('th', { style: thStyle }, 'Component'),
-            React.createElement('th', { style: thStyle }, 'Status')
+            React.createElement('th', { style: thStyle }, 'Status'),
+            React.createElement('th', { style: thStyle }, 'Installed versions'),
+            React.createElement('th', { style: thStyle }, 'Actions')
           )
         ),
         React.createElement(
@@ -247,6 +444,22 @@ function OverviewPage() {
                 'td',
                 { style: tdStyle },
                 React.createElement(StatusChip, { installed: c.installed })
+              ),
+              React.createElement(
+                'td',
+                { style: { ...tdStyle, fontFamily: 'monospace', fontSize: 13 } },
+                c.version === null
+                  ? React.createElement(
+                      'span',
+                      { style: { color: '#888', fontSize: 12, fontFamily: 'inherit' } },
+                      'Loading…'
+                    )
+                  : c.version
+              ),
+              React.createElement(
+                'td',
+                { style: tdStyle },
+                React.createElement(DetailsMenu, { component: c })
               )
             )
           )
