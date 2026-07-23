@@ -197,20 +197,6 @@ export function useInstalledComponents(): ComponentStatus[] {
   const [versions, setVersions] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(COMPONENTS.map((c) => [c.name, null]))
   );
-  // Bumped when the host tells us a component was installed/changed, so we re-probe
-  // without a full page reload. See host postMessage in ManagedControlPlanePage.tsx.
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.source !== 'ocp-host') return;
-      if (event.data?.action !== 'componentsChanged') return;
-      setRefreshKey((k) => k + 1);
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
 
   useEffect(() => {
     COMPONENTS.forEach((c) => {
@@ -224,7 +210,7 @@ export function useInstalledComponents(): ComponentStatus[] {
         .then((v) => setVersions((prev) => ({ ...prev, [c.name]: v ?? '—' })))
         .catch(() => setVersions((prev) => ({ ...prev, [c.name]: '—' })));
     });
-  }, [refreshKey]);
+  }, []);
 
   return COMPONENTS.map((c) => ({
     name: c.name,
