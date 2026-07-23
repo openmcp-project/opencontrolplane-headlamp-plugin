@@ -293,17 +293,52 @@ function requestInstallWizard(componentName: string) {
   );
 }
 
+// The host app (ui-frontend) embeds this plugin in two different MCP flows with
+// different installable component sets. The plugin's own iframe URL is identical
+// in both (/api/headlamp/c/...), so we read the host's route from the parent
+// window (same-origin; HashRouter → the route lives in the hash).
+type Mode = 'v1' | 'v2' | 'unknown';
+
+function detectMode(): Mode {
+  try {
+    if (window.parent === window) return 'unknown';
+    const hash = window.parent.location.hash || '';
+    // Both flows render Headlamp inside their control-plane page (no /headlamp
+    // segment). V1 route: /managedcontrolplane/<name>. V2 route: /controlplane/<name>.
+    // Check V1 first because its path also contains the substring "controlplane".
+    if (hash.includes('/managedcontrolplane/')) return 'v1';
+    if (hash.includes('/controlplane/')) return 'v2';
+    return 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+// Which components can be installed from Headlamp in each host mode.
+// unknown → the V2 (safe intersection) set, so we never offer an install the host can't handle.
+const INSTALLABLE_BY_MODE: Record<Mode, Set<string>> = {
+  v1: new Set(['crossplane', 'flux', 'btpServiceOperator', 'externalSecretsOperator', 'kyverno']),
+  v2: new Set(['crossplane', 'flux', 'externalSecretsOperator']),
+  unknown: new Set(['crossplane', 'flux', 'externalSecretsOperator']),
+};
+
+function canInstall(componentName: string, mode: Mode): boolean {
+  return INSTALLABLE_BY_MODE[mode].has(componentName);
+}
+
 function openDocumentation(docsUrl: string) {
   window.open(docsUrl, '_blank', 'noopener,noreferrer');
 }
 
-// "Details" dropdown in the Actions column: Install Service + Open Documentation.
+// "Details" dropdown in the Actions column: Install Service (mode-gated) + Open Documentation.
 function DetailsMenu({ component }: { component: ComponentStatus }) {
   const [anchorEl, setAnchorEl] = useState<any>(null);
   const open = Boolean(anchorEl);
 
   const items = [
-    { key: 'install', label: 'Install Service', onClick: () => requestInstallWizard(component.name) },
+    ...(canInstall(component.name, detectMode())
+      ? [{ key: 'install', label: 'Install Service', onClick: () => requestInstallWizard(component.name) }]
+      : []),
     { key: 'docs', label: 'Open Documentation', onClick: () => openDocumentation(component.docsUrl) },
   ];
 
