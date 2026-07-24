@@ -125,6 +125,7 @@ export interface ComponentStatus {
   installed: boolean | null;
   version: string | null; // null = loading, '—' = unknown/not found
   docsUrl: string;
+  phase?: string | null; // install phase (Ready/Progressing/…) pushed by the host; null if unknown
 }
 
 interface ComponentConfig {
@@ -197,6 +198,27 @@ export function useInstalledComponents(): ComponentStatus[] {
   const [versions, setVersions] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(COMPONENTS.map((c) => [c.name, null]))
   );
+  // Install phase (status.phase) pushed by the host — the plugin can't read the
+  // GraphQL-only component CRs itself. Keyed by component name.
+  const [phases, setPhases] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (window.parent === window) return; // not embedded — no host to talk to
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (!data || data.source !== 'ocp-host' || data.action !== 'componentStatus') return;
+      setPhases(data.statuses ?? {});
+    };
+    // Register before announcing, so we never miss the host's reply.
+    window.addEventListener('message', onMessage);
+    window.parent.postMessage(
+      { source: 'ocp-headlamp-plugin', action: 'statusHandshake' },
+      window.location.origin
+    );
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   useEffect(() => {
     COMPONENTS.forEach((c) => {
@@ -218,6 +240,7 @@ export function useInstalledComponents(): ComponentStatus[] {
     installed: installed[c.name],
     version: versions[c.name],
     docsUrl: c.docsUrl,
+    phase: phases[c.name] ?? null,
   }));
 }
 
@@ -255,7 +278,38 @@ function useProviders(): { providers: Provider[] | null; error: boolean } {
   return { providers, error };
 }
 
-function StatusChip({ installed }: { installed: boolean | null }) {
+function phaseColor(phase: string): string {
+  switch (phase) {
+    case 'Ready':
+      return '#4caf50'; // green
+    case 'Progressing':
+      return '#E9730C'; // amber
+    default:
+      return '#9e9e9e'; // Terminating / unknown — grey
+  }
+}
+
+function StatusChip({ installed, phase }: { installed: boolean | null; phase?: string | null }) {
+  // The host-reported install phase is the authoritative signal: during install
+  // the workload CRD may not exist yet (so the ApiProxy probe reports not-installed),
+  // but the phase already says 'Progressing'. Prefer phase whenever it's present.
+  if (phase) {
+    return React.createElement(
+      'span',
+      {
+        style: {
+          display: 'inline-block',
+          padding: '2px 10px',
+          borderRadius: 12,
+          background: phaseColor(phase),
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 600,
+        },
+      },
+      phase
+    );
+  }
   if (installed === null) {
     return React.createElement('span', { style: { color: '#888', fontSize: 12 } }, 'Loading…');
   }
@@ -464,7 +518,7 @@ function OverviewPage() {
               React.createElement(
                 'td',
                 { style: tdStyle },
-                React.createElement(StatusChip, { installed: c.installed })
+                React.createElement(StatusChip, { installed: c.installed, phase: c.phase })
               ),
               React.createElement(
                 'td',
