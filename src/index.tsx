@@ -198,12 +198,11 @@ export function useInstalledComponents(): ComponentStatus[] {
   const [versions, setVersions] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(COMPONENTS.map((c) => [c.name, null]))
   );
-  // Install phase (status.phase) pushed by the host — the plugin can't read the
-  // GraphQL-only component CRs itself. Keyed by component name.
+  // Install phase pushed by the host, keyed by component name.
   const [phases, setPhases] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
-    if (window.parent === window) return; // not embedded — no host to talk to
+    if (window.parent === window) return; // not embedded
 
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -211,7 +210,7 @@ export function useInstalledComponents(): ComponentStatus[] {
       if (!data || data.source !== 'ocp-host' || data.action !== 'componentStatus') return;
       setPhases(data.statuses ?? {});
     };
-    // Register before announcing, so we never miss the host's reply.
+    // Listen before announcing so we don't miss the host's reply.
     window.addEventListener('message', onMessage);
     window.parent.postMessage(
       { source: 'ocp-headlamp-plugin', action: 'statusHandshake' },
@@ -222,11 +221,9 @@ export function useInstalledComponents(): ComponentStatus[] {
 
   useEffect(() => {
     COMPONENTS.forEach((c) => {
-      // Existence probe — unchanged behavior.
       apiExists(c.probe).then((ok) =>
         setInstalled((prev) => ({ ...prev, [c.name]: ok }))
       );
-      // Version fetch — fully independent; a failure never affects install status.
       // Resolve unknown to '—' so the UI can distinguish loading (null) from not-found.
       fetchDeploymentVersion(c.versionPaths)
         .then((v) => setVersions((prev) => ({ ...prev, [c.name]: v ?? '—' })))
@@ -282,18 +279,39 @@ function phaseColor(phase: string): string {
   switch (phase) {
     case 'Ready':
       return '#4caf50'; // green
+    case 'Initializing':
+    case 'Requested':
     case 'Progressing':
       return '#E9730C'; // amber
     default:
-      return '#9e9e9e'; // Terminating / unknown — grey
+      return '#9e9e9e'; // grey
   }
 }
 
 function StatusChip({ installed, phase }: { installed: boolean | null; phase?: string | null }) {
-  // The host-reported install phase is the authoritative signal: during install
-  // the workload CRD may not exist yet (so the ApiProxy probe reports not-installed),
-  // but the phase already says 'Progressing'. Prefer phase whenever it's present.
-  if (phase) {
+  // 'Requested' is a weak V1 signal (in spec.components, probe lagging) so a confirmed
+  // probe wins over it; every other phase is authoritative (shown even if probe is false).
+  const phaseChip = (label: string) =>
+    React.createElement(
+      'span',
+      {
+        style: {
+          display: 'inline-block',
+          padding: '2px 10px',
+          borderRadius: 12,
+          background: phaseColor(label),
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 600,
+        },
+      },
+      label
+    );
+
+  if (phase && phase !== 'Requested') {
+    return phaseChip(phase);
+  }
+  if (installed === true) {
     return React.createElement(
       'span',
       {
@@ -301,14 +319,17 @@ function StatusChip({ installed, phase }: { installed: boolean | null; phase?: s
           display: 'inline-block',
           padding: '2px 10px',
           borderRadius: 12,
-          background: phaseColor(phase),
+          background: '#4caf50',
           color: '#fff',
           fontSize: 12,
           fontWeight: 600,
         },
       },
-      phase
+      'Installed'
     );
+  }
+  if (phase === 'Requested') {
+    return phaseChip('Requested');
   }
   if (installed === null) {
     return React.createElement('span', { style: { color: '#888', fontSize: 12 } }, 'Loading…');
@@ -320,13 +341,13 @@ function StatusChip({ installed, phase }: { installed: boolean | null; phase?: s
         display: 'inline-block',
         padding: '2px 10px',
         borderRadius: 12,
-        background: installed ? '#4caf50' : 'rgba(128,128,128,0.2)',
-        color: installed ? '#fff' : '#888',
+        background: 'rgba(128,128,128,0.2)',
+        color: '#888',
         fontSize: 12,
         fontWeight: 600,
       },
     },
-    installed ? 'Installed' : 'Not installed'
+    'Not installed'
   );
 }
 
@@ -334,32 +355,25 @@ function HealthChip({ healthy }: { healthy: boolean | null }) {
   return conditionChip(healthy);
 }
 
-// Ask the host app (ui-frontend) to open its component-install wizard. The plugin
-// runs inside a same-origin iframe; it cannot install a component itself (the
-// ManagedControlPlane lives on the Crate cluster, out of the iframe's reach), so
-// installation is delegated to the host via postMessage. See host listener in
-// ManagedControlPlanePage.tsx.
+// The plugin can't install a component itself (the CR lives on the host's Crate
+// cluster, out of the iframe's reach); it asks the host to open its install wizard.
 function requestInstallWizard(componentName: string) {
-  if (window.parent === window) return; // not embedded — nothing to notify
+  if (window.parent === window) return; // not embedded
   window.parent.postMessage(
     { source: 'ocp-headlamp-plugin', action: 'openInstallWizard', component: componentName },
     window.location.origin
   );
 }
 
-// The host app (ui-frontend) embeds this plugin in two different MCP flows with
-// different installable component sets. The plugin's own iframe URL is identical
-// in both (/api/headlamp/c/...), so we read the host's route from the parent
-// window (same-origin; HashRouter → the route lives in the hash).
+// The host embeds this plugin in both the V1 and V2 flows with different installable
+// sets; the iframe URL is identical, so detect the flow from the parent route (hash).
 type Mode = 'v1' | 'v2' | 'unknown';
 
 function detectMode(): Mode {
   try {
     if (window.parent === window) return 'unknown';
     const hash = window.parent.location.hash || '';
-    // Both flows render Headlamp inside their control-plane page (no /headlamp
-    // segment). V1 route: /managedcontrolplane/<name>. V2 route: /controlplane/<name>.
-    // Check V1 first because its path also contains the substring "controlplane".
+    // Check V1 first: its /managedcontrolplane/ path also contains "controlplane".
     if (hash.includes('/managedcontrolplane/')) return 'v1';
     if (hash.includes('/controlplane/')) return 'v2';
     return 'unknown';
@@ -368,8 +382,7 @@ function detectMode(): Mode {
   }
 }
 
-// Which components can be installed from Headlamp in each host mode.
-// unknown → the V2 (safe intersection) set, so we never offer an install the host can't handle.
+// unknown → the V2 (narrower) set, so we never offer an install the host can't handle.
 const INSTALLABLE_BY_MODE: Record<Mode, Set<string>> = {
   v1: new Set(['crossplane', 'flux', 'btpServiceOperator', 'externalSecretsOperator', 'kyverno']),
   v2: new Set(['crossplane', 'flux', 'externalSecretsOperator']),
