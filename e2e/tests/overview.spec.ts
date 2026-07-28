@@ -4,14 +4,14 @@ import { gotoOCPOverview } from '../helpers';
 test.describe('OCP Overview', () => {
   test('renders Control Plane Overview page', async ({ page }) => {
     await gotoOCPOverview(page);
-    await expect(page.locator('text=Control Plane Overview')).toBeVisible({ timeout: 20_000 });
-    await expect(page.locator('text=Components')).toBeVisible();
+    await expect(page.locator('h1:has-text("Control Plane Overview")')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('text=Components').first()).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/overview.png', fullPage: true });
   });
 
   test('shows component status chips', async ({ page }) => {
     await gotoOCPOverview(page);
-    await expect(page.locator('text=Crossplane').first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('text=Crossplane').first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('text=Flux').first()).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/overview-components.png', fullPage: true });
   });
