@@ -4,7 +4,10 @@
   "description": "OpenControlPlane plugin for Headlamp — chrome removal, Fiori styling, and OCP overview page",
   "main": "main.js",
   "scripts": {
-    "build": "npx @kinvolk/headlamp-plugin build"
+    "build": "npx @kinvolk/headlamp-plugin build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "keywords": [
     "OpenControlPlane",
@@ -17,6 +20,13 @@
   "type": "commonjs",
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "0.13.1",
-    "@types/react": "18.3.28"
+    "@playwright/test": "^1.44.0",
+    "@testing-library/react": "^15.0.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "18.3.28",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "jsdom": "^24.1.0",
+    "vitest": "^1.6.0"
   }
 }

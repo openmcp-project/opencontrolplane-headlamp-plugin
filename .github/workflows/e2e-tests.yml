@@ -1,0 +1,130 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      # ── Cluster ──────────────────────────────────────────────────────────────
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: headlamp-e2e
+
+      # ── Headlamp ─────────────────────────────────────────────────────────────
+
+      - name: Install Headlamp
+        run: |
+          helm repo add headlamp https://kubernetes-sigs.github.io/headlamp/
+          helm repo update
+          helm install headlamp headlamp/headlamp \
+            --namespace headlamp \
+            --create-namespace \
+            --set replicaCount=1 \
+            --set config.oidc.clientID="" \
+            --set config.pluginsDir=/headlamp/plugins \
+            --wait \
+            --timeout 5m
+
+      - name: Create Headlamp service account token
+        run: |
+          TOKEN=$(kubectl create token headlamp --namespace headlamp --duration=1h)
+          echo "HEADLAMP_TOKEN=${TOKEN}" >> $GITHUB_ENV
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Inject plugin into Headlamp via ConfigMap
+        run: |
+          # Store plugin files in ConfigMaps
+          kubectl create configmap headlamp-plugin-main-js \
+            --from-file=main.js=dist/main.js \
+            -n headlamp --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create configmap headlamp-plugin-package-json \
+            --from-file=package.json=package.json \
+            -n headlamp --dry-run=client -o yaml | kubectl apply -f -
+          # Patch deployment with strategic merge to add volumes + mounts
+          kubectl patch deployment headlamp -n headlamp --type=strategic -p '{
+            "spec": {
+              "template": {
+                "spec": {
+                  "volumes": [
+                    {"name": "plugin-main-js", "configMap": {"name": "headlamp-plugin-main-js"}},
+                    {"name": "plugin-package-json", "configMap": {"name": "headlamp-plugin-package-json"}}
+                  ],
+                  "containers": [{
+                    "name": "headlamp",
+                    "volumeMounts": [
+                      {"name": "plugin-main-js", "mountPath": "/headlamp/plugins/opencontrolplane/main.js", "subPath": "main.js"},
+                      {"name": "plugin-package-json", "mountPath": "/headlamp/plugins/opencontrolplane/package.json", "subPath": "package.json"}
+                    ]
+                  }]
+                }
+              }
+            }
+          }'
+          kubectl rollout status deployment/headlamp -n headlamp --timeout=2m
+
+      - name: Port-forward Headlamp
+        run: |
+          kubectl port-forward -n headlamp svc/headlamp 4466:80 &
+          # Wait for port-forward to be ready
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:4466 > /dev/null && break
+            sleep 2
+          done
+
+      # ── Tests ────────────────────────────────────────────────────────────────
+
+      - name: Create screenshots dir
+        run: mkdir -p e2e/screenshots
+
+      - name: Run Playwright E2E tests
+        run: npm run test:e2e
+        env:
+          HEADLAMP_URL: http://localhost:4466
+          HEADLAMP_TOKEN: ${{ env.HEADLAMP_TOKEN }}
+
+      # ── Artifacts ────────────────────────────────────────────────────────────
+
+      - name: Upload screenshots
+        id: upload
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e/screenshots/
+          retention-days: 14
+
+      - name: Comment screenshot link on PR
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SCREENSHOTS=$(ls e2e/screenshots/*.png 2>/dev/null | xargs -I{} basename {} | sed 's/^/- /' || echo "none")
+          gh pr comment ${{ github.event.pull_request.number }} --body "### E2E Screenshots
+          Artifact: [e2e-screenshots](${{ steps.upload.outputs.artifact-url }})
+
+          ${SCREENSHOTS}"
