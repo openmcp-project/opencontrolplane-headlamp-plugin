@@ -3,38 +3,22 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      nextVersion:
-        description: "Specify the release version in semver format v[major].[minor].[patch] e.g. v0.0.0"
+      version:
+        description: 'Release version in semver format, e.g. v1.0.0'
         required: true
-
-permissions:
-  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check if tag already exists
-        run: |
-          if git rev-parse ${{ github.event.inputs.nextVersion }} >/dev/null 2>&1; then
-            echo "Tag ${{ github.event.inputs.nextVersion }} already exists."
-            exit 1
-          else
-            echo "Tag does not exist. Building release version ${{ github.event.inputs.nextVersion }}"
-          fi
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "lts/*"
           cache: npm
 
       - name: Install dependencies
@@ -45,7 +29,7 @@ jobs:
 
       - name: Package plugin tar.gz for ArtifactHub
         run: |
-          VERSION=${{ github.event.inputs.nextVersion }}
+          VERSION=${{ github.event.inputs.version }}
           SEMVER=${VERSION#v}
           mkdir -p package/opencontrolplane
           cp dist/main.js package/opencontrolplane/main.js
@@ -58,7 +42,7 @@ jobs:
         run: |
           CHECKSUM=$(sha256sum ${{ env.TARBALL }} | awk '{print $1}')
           SEMVER=${{ env.SEMVER }}
-          VERSION=${{ github.event.inputs.nextVersion }}
+          VERSION=${{ github.event.inputs.version }}
           TEMPLATE="artifacthub/0.0.2/artifacthub-pkg.yml"
           PKGFILE="artifacthub/${SEMVER}/artifacthub-pkg.yml"
           mkdir -p "artifacthub/${SEMVER}"
@@ -69,32 +53,21 @@ jobs:
           sed -i "s|sha256:.*|sha256:${CHECKSUM}|" "$PKGFILE"
           echo "PKGFILE=${PKGFILE}" >> $GITHUB_ENV
 
-      - name: Open PR with artifacthub metadata
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit artifacthub-pkg.yml and tag
         run: |
-          VERSION=${{ github.event.inputs.nextVersion }}
-          BRANCH="chore/artifacthub-${VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "${BRANCH}"
           git add artifacthub/
-          git diff --staged --quiet || git commit -m "chore: add artifacthub metadata for ${VERSION}"
-          git push origin "${BRANCH}"
-          gh pr create \
-            --title "chore: add artifacthub metadata for ${VERSION}" \
-            --body "Automated PR created by the release workflow for ${VERSION}. Merge to complete the release." \
-            --base main \
-            --head "${BRANCH}"
+          git diff --staged --quiet || git commit -m "chore: add artifacthub metadata for ${{ github.event.inputs.version }}"
+          git pull --rebase origin main
+          git tag ${{ github.event.inputs.version }}
+          git push origin HEAD:main --follow-tags
 
-      - name: Tag and create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git tag ${{ github.event.inputs.nextVersion }}
-          git push origin ${{ github.event.inputs.nextVersion }}
-          gh release create ${{ github.event.inputs.nextVersion }} \
-            --generate-notes \
-            --target ${{ github.sha }} \
-            dist/main.js \
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          files: |
+            dist/main.js
             ${{ env.TARBALL }}
+          generate_release_notes: true
