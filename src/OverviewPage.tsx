@@ -3,6 +3,7 @@ import { useInstalledComponents } from './components';
 import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
 import { MiniTimeline, FullTimeline } from './ui/StatusTimeline';
+import { Diagnostics } from './ui/Diagnostics';
 import { DetailsMenu } from './ui/DetailsMenu';
 import * as s from './OverviewPage.styles';
 
@@ -59,6 +60,7 @@ export function OverviewPage() {
                     <tr>
                       <td colSpan={6} style={s.expandedCellStyle}>
                         <FullTimeline installed={c.installed} phase={c.phase} />
+                        <Diagnostics versionPaths={c.versionPaths} />
                       </td>
                     </tr>
                   )}

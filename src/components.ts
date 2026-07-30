@@ -9,6 +9,7 @@ export interface ComponentStatus {
   version: string | null; // null = loading, '—' = unknown/not found
   docsUrl: string;
   phase?: string | null; // install phase (Ready/Progressing/…) pushed by the host; null if unknown
+  versionPaths: string[];
 }
 
 export function useInstalledComponents(): ComponentStatus[] {
@@ -53,5 +54,6 @@ export function useInstalledComponents(): ComponentStatus[] {
     version: versions[c.name],
     docsUrl: c.docsUrl,
     phase: phases[c.name] ?? null,
+    versionPaths: c.versionPaths,
   }));
 }
