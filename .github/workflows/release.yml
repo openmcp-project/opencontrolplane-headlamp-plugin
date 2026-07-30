@@ -80,12 +80,13 @@ jobs:
           git checkout -b "${BRANCH}"
           git add artifacthub/
           git diff --staged --quiet || git commit -m "chore: add artifacthub metadata for ${VERSION}"
-          git push origin "${BRANCH}"
+          git push --force origin "${BRANCH}"
+          # Open PR only if one doesn't already exist for this branch
           gh pr create \
             --title "chore: add artifacthub metadata for ${VERSION}" \
             --body "Automated PR created by the release workflow for ${VERSION}. Merge to complete the release." \
             --base main \
-            --head "${BRANCH}"
+            --head "${BRANCH}" || true
 
       - name: Tag and create GitHub Release
         env:
