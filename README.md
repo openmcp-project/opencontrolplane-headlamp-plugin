@@ -42,13 +42,14 @@ Then hard-refresh the browser (`Cmd+Shift+R`) to pick up the new build.
 
 ## Release
 
-Trigger a release via the [GitHub Actions release workflow](../../actions/workflows/release.yml) by clicking **Run workflow** and entering the semver version (e.g. `v1.0.0`). The workflow:
+Trigger a release via the [GitHub Actions release workflow](../../actions/workflows/release.yml) by clicking **Run workflow** and entering the semver version (e.g. `v0.1.0`). The workflow:
 
-- Creates a git tag
+- Checks the tag doesn't already exist
 - Builds the plugin and uploads `main.js` + a `headlamp-opencontrolplane-<version>.tar.gz` as GitHub Release assets
-- Updates `artifacthub/<version>/artifacthub-pkg.yml` with the correct checksum and commits it
+- Creates the git tag and GitHub Release with auto-generated notes
+- Opens a PR with the updated `artifacthub/<version>/artifacthub-pkg.yml` — merge it to complete the ArtifactHub publish
 
-Once published, the plugin is installable via Headlamp's plugin manager using its ArtifactHub URL.
+Once the PR is merged, the plugin is installable via Headlamp's plugin manager using its ArtifactHub URL.
 
 ### Support, Feedback, Contributing
 
