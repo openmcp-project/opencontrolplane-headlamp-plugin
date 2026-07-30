@@ -2,101 +2,97 @@ import React from 'react';
 import { useInstalledComponents } from './components';
 import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
+import { MiniTimeline, FullTimeline } from './ui/StatusTimeline';
 import { DetailsMenu } from './ui/DetailsMenu';
-
-const sectionStyle: React.CSSProperties = { marginBottom: 32 };
-const headingStyle: React.CSSProperties = {
-  fontSize: 18,
-  fontWeight: 600,
-  marginBottom: 12,
-  borderBottom: '1px solid rgba(128,128,128,0.2)',
-  paddingBottom: 8,
-};
-const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
-const thStyle: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '8px 12px',
-  fontWeight: 600,
-  fontSize: 13,
-  opacity: 0.6,
-  borderBottom: '1px solid rgba(128,128,128,0.15)',
-};
-const tdStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  borderBottom: '1px solid rgba(128,128,128,0.1)',
-  fontSize: 14,
-};
-const monoTdStyle: React.CSSProperties = { ...tdStyle, fontFamily: 'monospace', fontSize: 13 };
-const mutedStyle: React.CSSProperties = { color: '#888', fontSize: 14 };
+import * as s from './OverviewPage.styles';
 
 export function OverviewPage() {
   const components = useInstalledComponents();
   const { providers, error: providersError } = useProviders();
+  const [expanded, setExpanded] = React.useState<string | null>(null);
 
   const crossplaneInstalled = components.find((c) => c.name === 'crossplane')?.installed ?? null;
 
   return (
-    <div style={{ padding: 24, maxWidth: 800 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Control Plane Overview</h1>
+    <div style={s.pageStyle}>
+      <h1 style={s.titleStyle}>Control Plane Overview</h1>
 
-      <div style={sectionStyle}>
-        <div style={headingStyle}>Components</div>
-        <table style={tableStyle}>
+      <div style={s.sectionStyle}>
+        <div style={s.headingStyle}>Components</div>
+        <table style={s.tableStyle}>
           <thead>
             <tr>
-              <th style={thStyle}>Component</th>
-              <th style={thStyle}>Status</th>
-              <th style={thStyle}>Installed versions</th>
-              <th style={thStyle}>Actions</th>
+              <th style={s.chevronThStyle} aria-hidden="true"></th>
+              <th style={s.thStyle}>Component</th>
+              <th style={s.thStyle}>Status</th>
+              <th style={s.thStyle}>Progress</th>
+              <th style={s.thStyle}>Installed versions</th>
+              <th style={s.thStyle}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {components.map((c) => (
-              <tr key={c.name}>
-                <td style={tdStyle}>{c.label}</td>
-                <td style={tdStyle}>
-                  <StatusChip installed={c.installed} phase={c.phase} />
-                </td>
-                <td style={monoTdStyle}>
-                  {c.version === null ? (
-                    <span style={{ color: '#888', fontSize: 12, fontFamily: 'inherit' }}>Loading…</span>
-                  ) : (
-                    c.version
+            {components.map((c) => {
+              const isExpanded = expanded === c.name;
+              return (
+                <React.Fragment key={c.name}>
+                  <tr onClick={() => setExpanded(isExpanded ? null : c.name)} style={s.clickableRowStyle}>
+                    <td style={s.chevronTdStyle}>
+                      <span aria-label={isExpanded ? 'Collapse' : 'Expand'} style={s.chevronStyle(isExpanded)}>
+                        ›
+                      </span>
+                    </td>
+                    <td style={s.tdStyle}>{c.label}</td>
+                    <td style={s.tdStyle}>
+                      <StatusChip installed={c.installed} phase={c.phase} />
+                    </td>
+                    <td style={s.tdStyle}>
+                      <MiniTimeline installed={c.installed} phase={c.phase} />
+                    </td>
+                    <td style={s.monoTdStyle}>
+                      {c.version === null ? <span style={s.loadingVersionStyle}>Loading…</span> : c.version}
+                    </td>
+                    <td style={s.tdStyle} onClick={(e) => e.stopPropagation()}>
+                      <DetailsMenu component={c} />
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={6} style={s.expandedCellStyle}>
+                        <FullTimeline installed={c.installed} phase={c.phase} />
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td style={tdStyle}>
-                  <DetailsMenu component={c} />
-                </td>
-              </tr>
-            ))}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {crossplaneInstalled === false ? null : (
-        <div style={sectionStyle}>
-          <div style={headingStyle}>Crossplane Providers</div>
+        <div style={s.sectionStyle}>
+          <div style={s.headingStyle}>Crossplane Providers</div>
           {providersError ? (
-            <span style={mutedStyle}>Crossplane not installed</span>
+            <span style={s.mutedStyle}>Crossplane not installed</span>
           ) : providers === null ? (
-            <span style={mutedStyle}>Loading…</span>
+            <span style={s.mutedStyle}>Loading…</span>
           ) : providers.length === 0 ? (
-            <span style={mutedStyle}>No providers installed</span>
+            <span style={s.mutedStyle}>No providers installed</span>
           ) : (
-            <table style={tableStyle}>
+            <table style={s.tableStyle}>
               <thead>
                 <tr>
-                  <th style={thStyle}>Name</th>
-                  <th style={thStyle}>Version</th>
-                  <th style={thStyle}>Health</th>
+                  <th style={s.thStyle}>Name</th>
+                  <th style={s.thStyle}>Version</th>
+                  <th style={s.thStyle}>Health</th>
                 </tr>
               </thead>
               <tbody>
                 {providers.map((p) => (
                   <tr key={p.name}>
-                    <td style={tdStyle}>{p.name}</td>
-                    <td style={monoTdStyle}>{p.version}</td>
-                    <td style={tdStyle}>
+                    <td style={s.tdStyle}>{p.name}</td>
+                    <td style={s.monoTdStyle}>{p.version}</td>
+                    <td style={s.tdStyle}>
                       <HealthChip healthy={p.healthy} />
                     </td>
                   </tr>
