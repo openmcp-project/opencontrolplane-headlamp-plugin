@@ -108,9 +108,11 @@ export function kioskCss(): string {
       color: var(--ocp-primary) !important;
     }
 
-    /* ── Hide "Create / Apply" button ── */
+    /* ── Hide "Create / Apply" button (collapsed sidebar, aria-label variant) ── */
     button[aria-label="Create / Apply"],
-    button[aria-label="Create/Apply"] {
+    button[aria-label="Create/Apply"],
+    /* ── Hide "Create" button in expanded sidebar (MuiDrawer context) ── */
+    [class*="MuiDrawer-paper"] button[class*="MuiButton-textSecondary"][class*="MuiButton-sizeLarge"] {
       display: none !important;
     }
 
