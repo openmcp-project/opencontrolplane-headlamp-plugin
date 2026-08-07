@@ -59,12 +59,22 @@ export const COMPONENTS: ComponentConfig[] = [
   },
   // v2 placeholders — add config entries when needed:
   // { name: 'certManager', label: 'cert-manager', probe: '…', versionPaths: […], docsUrl: '…' },
+  {
+    name: 'metricsOperator',
+    label: 'Metrics Operator',
+    probe: '/apis/metrics.services.open-control-plane.io/v1alpha1/metricsoperators',
+    versionPaths: [
+      '/apis/apps/v1/deployments?labelSelector=app.kubernetes.io/name=metrics-operator',
+      '/apis/apps/v1/namespaces/metrics-operator/deployments',
+    ],
+    docsUrl: 'https://github.com/openmcp-project/service-provider-metrics-operator#readme',
+  },
 ];
 
 export type Mode = 'v1' | 'v2' | 'unknown';
 
 export const INSTALLABLE_BY_MODE: Record<Mode, Set<string>> = {
   v1: new Set(['crossplane', 'flux', 'btpServiceOperator', 'externalSecretsOperator', 'kyverno']),
-  v2: new Set(['crossplane', 'flux', 'externalSecretsOperator']),
-  unknown: new Set(['crossplane', 'flux', 'externalSecretsOperator']),
+  v2: new Set(['crossplane', 'flux', 'externalSecretsOperator', 'metricsOperator']),
+  unknown: new Set(['crossplane', 'flux', 'externalSecretsOperator', 'metricsOperator']),
 };
