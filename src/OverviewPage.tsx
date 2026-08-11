@@ -4,13 +4,16 @@ import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
 import { DetailsMenu } from './ui/DetailsMenu';
 
+const { SectionBox } = (window as any).pluginLib?.CommonComponents ?? {};
+
 const sectionStyle: React.CSSProperties = { marginBottom: 32 };
 const headingStyle: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: 13,
   fontWeight: 600,
   marginBottom: 12,
-  borderBottom: '1px solid rgba(128,128,128,0.2)',
-  paddingBottom: 8,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase' as const,
+  color: '#757575',
 };
 const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
 const thStyle: React.CSSProperties = {
@@ -18,12 +21,13 @@ const thStyle: React.CSSProperties = {
   padding: '8px 12px',
   fontWeight: 600,
   fontSize: 13,
-  opacity: 0.6,
-  borderBottom: '1px solid rgba(128,128,128,0.15)',
+  background: '#fafafa',
+  borderBottom: '2px solid #e0e0e0',
+  whiteSpace: 'nowrap' as const,
 };
 const tdStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  borderBottom: '1px solid rgba(128,128,128,0.1)',
+  padding: '8px 12px',
+  borderBottom: '1px solid #f0f0f0',
   fontSize: 14,
 };
 const monoTdStyle: React.CSSProperties = { ...tdStyle, fontFamily: 'monospace', fontSize: 13 };
@@ -35,10 +39,12 @@ export function OverviewPage() {
 
   const crossplaneInstalled = components.find((c) => c.name === 'crossplane')?.installed ?? null;
 
-  return (
-    <div style={{ padding: 24, maxWidth: 800 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Control Plane Overview</h1>
+  if (!SectionBox) {
+    return <div style={{ padding: 24 }}><span style={{ color: '#888' }}>Loading…</span></div>;
+  }
 
+  return (
+    <SectionBox title="Control Plane Overview" headerProps={{ headerStyle: 'main' }}>
       <div style={sectionStyle}>
         <div style={headingStyle}>Components</div>
         <table style={tableStyle}>
@@ -106,6 +112,6 @@ export function OverviewPage() {
           )}
         </div>
       )}
-    </div>
+    </SectionBox>
   );
 }
