@@ -1,39 +1,31 @@
 import React from 'react';
 import { Chip } from '../mui';
+import { STATUS_COLORS, CHIP } from '../theme';
 
-const chipStyle = (background: string, color: string): React.CSSProperties => ({
-  display: 'inline-block',
-  padding: '2px 10px',
-  borderRadius: 12,
-  background,
-  color,
-  fontSize: 12,
-  fontWeight: 600,
-});
-
-export function conditionChip(healthy: boolean | null) {
-  const color = healthy === true ? '#4caf50' : healthy === false ? '#f44336' : '#9e9e9e';
-  const label = healthy === true ? 'Healthy' : healthy === false ? 'Unhealthy' : '—';
+function chip(bg: string, color: string, label: string): React.ReactElement {
   if (Chip) {
-    return <Chip label={label} size="small" style={{ background: color, color: '#fff', fontWeight: 600 }} />;
+    return <Chip label={label} size="small" style={{ background: bg, color, fontWeight: CHIP.fontWeight }} />;
   }
   return (
-    <span style={{ padding: '2px 8px', borderRadius: 10, background: color, color: '#fff', fontSize: 11, fontWeight: 600 }}>
+    <span style={{ ...CHIP, display: 'inline-block', background: bg, color }}>
       {label}
     </span>
   );
 }
 
-function phaseColor(phase: string): string {
+export function conditionChip(healthy: boolean | null): React.ReactElement {
+  if (healthy === true)  return chip(STATUS_COLORS.healthy.bg,   STATUS_COLORS.healthy.text,   'Healthy');
+  if (healthy === false) return chip(STATUS_COLORS.unhealthy.bg, STATUS_COLORS.unhealthy.text, 'Unhealthy');
+  return chip(STATUS_COLORS.unknown.bg, STATUS_COLORS.unknown.text, 'Unknown');
+}
+
+function phaseTokens(phase: string): { bg: string; text: string } {
   switch (phase) {
-    case 'Ready':
-      return '#4caf50'; // green
+    case 'Ready':        return STATUS_COLORS.installed;
     case 'Initializing':
     case 'Requested':
-    case 'Progressing':
-      return '#E9730C'; // amber
-    default:
-      return '#9e9e9e'; // grey
+    case 'Progressing':  return STATUS_COLORS.progressing;
+    default:             return STATUS_COLORS.unknown;
   }
 }
 
@@ -41,18 +33,19 @@ export function StatusChip({ installed, phase }: { installed: boolean | null; ph
   // 'Requested' is a weak V1 signal (in spec.components, probe lagging) so a confirmed
   // probe wins over it; every other phase is authoritative (shown even if probe is false).
   if (phase && phase !== 'Requested') {
-    return <span style={chipStyle(phaseColor(phase), '#fff')}>{phase}</span>;
+    const t = phaseTokens(phase);
+    return <span style={{ ...CHIP, display: 'inline-block', background: t.bg, color: t.text }}>{phase}</span>;
   }
   if (installed === true) {
-    return <span style={chipStyle('#4caf50', '#fff')}>Installed</span>;
+    return <span style={{ ...CHIP, display: 'inline-block', background: STATUS_COLORS.installed.bg, color: STATUS_COLORS.installed.text }}>Installed</span>;
   }
   if (phase === 'Requested') {
-    return <span style={chipStyle(phaseColor('Requested'), '#fff')}>Requested</span>;
+    return <span style={{ ...CHIP, display: 'inline-block', background: STATUS_COLORS.requested.bg, color: STATUS_COLORS.requested.text }}>Requested</span>;
   }
   if (installed === null) {
     return <span style={{ color: '#888', fontSize: 12 }}>Loading…</span>;
   }
-  return <span style={chipStyle('rgba(128,128,128,0.2)', '#888')}>Not installed</span>;
+  return <span style={{ ...CHIP, display: 'inline-block', background: STATUS_COLORS.notInstalled.bg, color: STATUS_COLORS.notInstalled.text }}>Not installed</span>;
 }
 
 export function HealthChip({ healthy }: { healthy: boolean | null }) {
