@@ -1,126 +1,108 @@
 import React from 'react';
-import { Icon } from '@iconify/react';
-import openInNew from '@iconify/icons-mdi/open-in-new';
-import lifebuoyIcon from '@iconify/icons-mdi/lifebuoy';
-import { useInstalledComponents, useHostMode } from './components';
+import { useInstalledComponents } from './components';
 import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
-import { MiniTimeline, FullTimeline } from './ui/StatusTimeline';
-import { Diagnostics } from './ui/Diagnostics';
 import { DetailsMenu } from './ui/DetailsMenu';
-import { openSupportIssue } from './host-bridge';
-import * as s from './OverviewPage.styles';
 
-const DOCS_URL = 'https://pages.github.tools.sap/cloud-orchestration/';
+const { SectionBox } = (window as any).pluginLib?.CommonComponents ?? {};
 
-function openExternal(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
+const sectionStyle: React.CSSProperties = { marginBottom: 32 };
+const headingStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  marginBottom: 12,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase' as const,
+  color: '#757575',
+};
+const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+const thStyle: React.CSSProperties = {
+  textAlign: 'left',
+  padding: '8px 12px',
+  fontWeight: 600,
+  fontSize: 13,
+  background: '#fafafa',
+  borderBottom: '2px solid #e0e0e0',
+  whiteSpace: 'nowrap' as const,
+};
+const tdStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderBottom: '1px solid #f0f0f0',
+  fontSize: 14,
+};
+const monoTdStyle: React.CSSProperties = { ...tdStyle, fontFamily: 'monospace', fontSize: 13 };
+const mutedStyle: React.CSSProperties = { color: '#888', fontSize: 14 };
 
 export function OverviewPage() {
   const components = useInstalledComponents();
-  const { mode, landscape } = useHostMode();
   const { providers, error: providersError } = useProviders();
-  const [expanded, setExpanded] = React.useState<string | null>(null);
 
   const crossplaneInstalled = components.find((c) => c.name === 'crossplane')?.installed ?? null;
 
-  return (
-    <div style={s.pageStyle}>
-      <div style={s.headerRowStyle}>
-        <div>
-          <h1 style={s.titleStyle}>Control Plane Overview</h1>
-          <div style={s.subtitleStyle}>Manage and monitor services that power your control plane.</div>
-        </div>
-        <div style={s.headerLinksStyle}>
-          <button type="button" style={s.headerLinkStyle} onClick={() => openExternal(DOCS_URL)}>
-            <Icon icon={openInNew} width={16} height={16} />
-            View Public Docs
-          </button>
-          <button type="button" style={s.headerLinkStyle} onClick={() => openSupportIssue(components, mode, landscape)}>
-            <Icon icon={lifebuoyIcon} width={16} height={16} />
-            Open Support Issue
-          </button>
-        </div>
-      </div>
+  if (!SectionBox) {
+    return <div style={{ padding: 24 }}><span style={{ color: '#888' }}>Loading…</span></div>;
+  }
 
-      <div style={s.sectionStyle}>
-        <div style={s.headingStyle}>Components</div>
-        <table style={s.tableStyle}>
+  return (
+    <SectionBox title="Control Plane Overview" headerProps={{ headerStyle: 'main' }}>
+      <div style={sectionStyle}>
+        <div style={headingStyle}>Components</div>
+        <table style={tableStyle}>
           <thead>
             <tr>
-              <th style={s.chevronThStyle} aria-hidden="true"></th>
-              <th style={s.thStyle}>Component</th>
-              <th style={s.thStyle}>Status</th>
-              <th style={s.thStyle}>Progress</th>
-              <th style={s.thStyle}>Installed versions</th>
-              <th style={s.thStyle}>Actions</th>
+              <th style={thStyle}>Component</th>
+              <th style={thStyle}>Status</th>
+              <th style={thStyle}>Installed versions</th>
+              <th style={thStyle}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {components.map((c) => {
-              const isExpanded = expanded === c.name;
-              return (
-                <React.Fragment key={c.name}>
-                  <tr onClick={() => setExpanded(isExpanded ? null : c.name)} style={s.clickableRowStyle}>
-                    <td style={s.chevronTdStyle}>
-                      <span aria-label={isExpanded ? 'Collapse' : 'Expand'} style={s.chevronStyle(isExpanded)}>
-                        ›
-                      </span>
-                    </td>
-                    <td style={s.tdStyle}>{c.label}</td>
-                    <td style={s.tdStyle}>
-                      <StatusChip installed={c.installed} phase={c.phase} />
-                    </td>
-                    <td style={s.tdStyle}>
-                      <MiniTimeline installed={c.installed} phase={c.phase} />
-                    </td>
-                    <td style={s.monoTdStyle}>
-                      {c.version === null ? <span style={s.loadingVersionStyle}>Loading…</span> : c.version}
-                    </td>
-                    <td style={s.tdStyle} onClick={(e) => e.stopPropagation()}>
-                      <DetailsMenu component={c} />
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr>
-                      <td colSpan={6} style={s.expandedCellStyle}>
-                        <FullTimeline installed={c.installed} phase={c.phase} />
-                        <Diagnostics versionPaths={c.versionPaths} />
-                      </td>
-                    </tr>
+            {components.map((c) => (
+              <tr key={c.name}>
+                <td style={tdStyle}>{c.label}</td>
+                <td style={tdStyle}>
+                  <StatusChip installed={c.installed} phase={c.phase} />
+                </td>
+                <td style={monoTdStyle}>
+                  {c.version === null ? (
+                    <span style={{ color: '#888', fontSize: 12, fontFamily: 'inherit' }}>Loading…</span>
+                  ) : (
+                    c.version
                   )}
-                </React.Fragment>
-              );
-            })}
+                </td>
+                <td style={tdStyle}>
+                  <DetailsMenu component={c} />
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       {crossplaneInstalled === false ? null : (
-        <div style={s.sectionStyle}>
-          <div style={s.headingStyle}>Crossplane Providers</div>
+        <div style={sectionStyle}>
+          <div style={headingStyle}>Crossplane Providers</div>
           {providersError ? (
-            <span style={s.mutedStyle}>Crossplane not installed</span>
+            <span style={mutedStyle}>Crossplane not installed</span>
           ) : providers === null ? (
-            <span style={s.mutedStyle}>Loading…</span>
+            <span style={mutedStyle}>Loading…</span>
           ) : providers.length === 0 ? (
-            <span style={s.mutedStyle}>No providers installed</span>
+            <span style={mutedStyle}>No providers installed</span>
           ) : (
-            <table style={s.tableStyle}>
+            <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th style={s.thStyle}>Name</th>
-                  <th style={s.thStyle}>Version</th>
-                  <th style={s.thStyle}>Health</th>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Version</th>
+                  <th style={thStyle}>Health</th>
                 </tr>
               </thead>
               <tbody>
                 {providers.map((p) => (
                   <tr key={p.name}>
-                    <td style={s.tdStyle}>{p.name}</td>
-                    <td style={s.monoTdStyle}>{p.version}</td>
-                    <td style={s.tdStyle}>
+                    <td style={tdStyle}>{p.name}</td>
+                    <td style={monoTdStyle}>{p.version}</td>
+                    <td style={tdStyle}>
                       <HealthChip healthy={p.healthy} />
                     </td>
                   </tr>
@@ -130,6 +112,6 @@ export function OverviewPage() {
           )}
         </div>
       )}
-    </div>
+    </SectionBox>
   );
 }
