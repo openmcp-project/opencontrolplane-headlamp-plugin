@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useInstalledComponents } from './components';
 import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
 import { DetailsMenu } from './ui/DetailsMenu';
+import { thStyle, tdStyle } from './ui/tableStyles';
 
 const { SectionBox } = (window as any).pluginLib?.CommonComponents ?? {};
+const { Tabs, Tab } = (window as any).pluginLib?.MuiCore ?? {};
 
 const sectionStyle: React.CSSProperties = { marginBottom: 32 };
 const headingStyle: React.CSSProperties = {
@@ -16,35 +18,16 @@ const headingStyle: React.CSSProperties = {
   color: '#757575',
 };
 const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
-const thStyle: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '8px 12px',
-  fontWeight: 600,
-  fontSize: 13,
-  background: '#fafafa',
-  borderBottom: '2px solid #e0e0e0',
-  whiteSpace: 'nowrap' as const,
-};
-const tdStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  borderBottom: '1px solid #f0f0f0',
-  fontSize: 14,
-};
 const monoTdStyle: React.CSSProperties = { ...tdStyle, fontFamily: 'monospace', fontSize: 13 };
 const mutedStyle: React.CSSProperties = { color: '#888', fontSize: 14 };
 
-export function OverviewPage() {
+function ServicesTab() {
   const components = useInstalledComponents();
   const { providers, error: providersError } = useProviders();
-
   const crossplaneInstalled = components.find((c) => c.name === 'crossplane')?.installed ?? null;
 
-  if (!SectionBox) {
-    return <div style={{ padding: 24 }}><span style={{ color: '#888' }}>Loading…</span></div>;
-  }
-
   return (
-    <SectionBox title="Control Plane Overview" headerProps={{ headerStyle: 'main' }}>
+    <>
       <div style={sectionStyle}>
         <div style={headingStyle}>Components</div>
         <table style={tableStyle}>
@@ -112,6 +95,36 @@ export function OverviewPage() {
           )}
         </div>
       )}
+    </>
+  );
+}
+
+function LearningTab() {
+  return (
+    <div style={{ padding: '32px 0', textAlign: 'center', color: '#9e9e9e' }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
+      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#616161' }}>Coming soon</div>
+      <div style={{ fontSize: 14 }}>Learning resources will appear here.</div>
+    </div>
+  );
+}
+
+export function OverviewPage() {
+  const [tab, setTab] = useState(0);
+
+  if (!SectionBox || !Tabs || !Tab) {
+    return <div style={{ padding: 24 }}><span style={{ color: '#888' }}>Loading…</span></div>;
+  }
+
+  return (
+    <SectionBox title="Control Plane Overview" headerProps={{ headerStyle: 'main' }}>
+      <Tabs value={tab} onChange={(_: any, v: number) => setTab(v)} style={{ marginBottom: 24 }}>
+        <Tab label="Services" />
+        <Tab label="Learning" />
+      </Tabs>
+
+      {tab === 0 && <ServicesTab />}
+      {tab === 1 && <LearningTab />}
     </SectionBox>
   );
 }
