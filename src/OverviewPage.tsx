@@ -3,7 +3,6 @@ import { useInstalledComponents } from './components';
 import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
 import { DetailsMenu } from './ui/DetailsMenu';
-import { MembersTab } from './ui/MembersTab';
 import { thStyle, tdStyle } from './ui/tableStyles';
 
 const { SectionBox } = (window as any).pluginLib?.CommonComponents ?? {};
@@ -121,13 +120,11 @@ export function OverviewPage() {
     <SectionBox title="Control Plane Overview" headerProps={{ headerStyle: 'main' }}>
       <Tabs value={tab} onChange={(_: any, v: number) => setTab(v)} style={{ marginBottom: 24 }}>
         <Tab label="Services" />
-        <Tab label="Members" />
         <Tab label="Learning" />
       </Tabs>
 
       {tab === 0 && <ServicesTab />}
-      {tab === 1 && <MembersTab />}
-      {tab === 2 && <LearningTab />}
+      {tab === 1 && <LearningTab />}
     </SectionBox>
   );
 }
