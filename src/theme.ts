@@ -12,4 +12,6 @@ export const FIORI = {
   errorRed: '#BB0000',
   borderRadius: '8px',
   spacing: '8px',
+  accentBlue: '#0a6ed1',
+  pendingGrey: '#c4c4c4',
 };
