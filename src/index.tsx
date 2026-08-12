@@ -8,6 +8,7 @@ import {
 import { FIORI } from './theme';
 import { OverviewPage } from './OverviewPage';
 import { applyOCPStyles, forceDefaultNamespace, forceSidebarCollapsed } from './kiosk';
+import { startSidebarGating } from './sidebarGating';
 
 // ── Custom theme: Fiori-aligned sidebar highlight ─────────────────────────────
 registerAppTheme({
@@ -50,6 +51,8 @@ if (typeof window !== 'undefined') {
   forceSidebarCollapsed();
   forceDefaultNamespace();
   applyOCPStyles();
+
+  startSidebarGating();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyOCPStyles);
