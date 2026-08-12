@@ -13,16 +13,16 @@ export function conditionChip(healthy: boolean | null) {
 }
 
 export function StatusChip({ installed, phase }: { installed: boolean | null; phase?: string | null }) {
-  // 'Requested' is a weak V1 signal (in spec.components, probe lagging) so a confirmed
-  // probe wins over it; every other phase is authoritative (shown even if probe is false).
-  if (phase && phase !== 'Requested') {
+  // 'Requested' and 'Progressing' are weak signals — a confirmed probe (installed=true) wins.
+  // 'Initializing' and other phases are authoritative and win even without a probe confirmation.
+  if (phase && phase !== 'Requested' && phase !== 'Progressing') {
     return <span style={s.chipStyle(phaseColor(phase), '#fff')}>{phase}</span>;
   }
   if (installed === true) {
     return <span style={s.chipStyle('#4caf50', '#fff')}>Installed</span>;
   }
-  if (phase === 'Requested') {
-    return <span style={s.chipStyle(phaseColor('Requested'), '#fff')}>Requested</span>;
+  if (phase === 'Progressing' || phase === 'Requested') {
+    return <span style={s.chipStyle(phaseColor(phase), '#fff')}>{phase}</span>;
   }
   if (installed === null) {
     return <span style={s.loadingStyle}>Loading…</span>;

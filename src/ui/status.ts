@@ -27,12 +27,13 @@ export interface Timeline {
   applicable: boolean;
 }
 
-// Mirrors StatusChip precedence: a confirmed probe beats the weak 'Requested' signal,
-// any other authoritative phase wins even when the probe is false.
+// A confirmed probe (installed=true) beats both 'Requested' and 'Progressing' — if the API
+// group is already live the component is ready regardless of what the host last pushed.
+// 'Initializing' and other authoritative phases win over an unconfirmed probe.
 function effectivePhase(installed: boolean | null, phase?: string | null): string | null {
-  if (phase && phase !== 'Requested' && LIFECYCLE_STEPS.includes(phase)) return phase;
+  if (phase && phase !== 'Requested' && phase !== 'Progressing' && LIFECYCLE_STEPS.includes(phase)) return phase;
   if (installed === true) return 'Ready';
-  if (phase === 'Requested') return 'Requested';
+  if (phase === 'Progressing' || phase === 'Requested') return phase;
   return null;
 }
 

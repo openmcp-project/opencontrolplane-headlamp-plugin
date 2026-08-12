@@ -42,6 +42,18 @@ describe('resolveTimeline', () => {
     expect(t.complete).toBe(true);
   });
 
+  it('a confirmed probe wins over Progressing → terminal (probe beats stuck phase)', () => {
+    const t = resolveTimeline(true, 'Progressing');
+    expect(t.complete).toBe(true);
+    expect(t.activeIndex).toBe(LIFECYCLE_STEPS.length - 1);
+  });
+
+  it('Progressing without confirmed probe → step 3 current', () => {
+    const t = resolveTimeline(null, 'Progressing');
+    expect(t.activeIndex).toBe(2);
+    expect(t.complete).toBe(false);
+  });
+
   it('not installed (false, null) → not applicable', () => {
     expect(resolveTimeline(false, null).applicable).toBe(false);
   });
