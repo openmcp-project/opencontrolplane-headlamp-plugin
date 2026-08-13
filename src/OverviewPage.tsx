@@ -4,6 +4,7 @@ import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
 import { DetailsMenu } from './ui/DetailsMenu';
 import { thStyle, tdStyle } from './ui/tableStyles';
+import { LearningTab } from './ui/LearningTab';
 
 const { SectionBox } = (window as any).pluginLib?.CommonComponents ?? {};
 const { Tabs, Tab } = (window as any).pluginLib?.MuiCore ?? {};
@@ -99,15 +100,6 @@ function ServicesTab() {
   );
 }
 
-function LearningTab() {
-  return (
-    <div style={{ padding: '32px 0', textAlign: 'center', color: '#9e9e9e' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
-      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#616161' }}>Coming soon</div>
-      <div style={{ fontSize: 14 }}>Learning resources will appear here.</div>
-    </div>
-  );
-}
 
 export function OverviewPage() {
   const [tab, setTab] = useState(0);
