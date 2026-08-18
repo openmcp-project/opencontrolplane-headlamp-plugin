@@ -1,4 +1,7 @@
 import React from 'react';
+import { Icon } from '@iconify/react';
+import openInNew from '@iconify/icons-mdi/open-in-new';
+import messageIcon from '@iconify/icons-mdi/message-reply-text-outline';
 import { useInstalledComponents } from './components';
 import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
@@ -6,6 +9,14 @@ import { MiniTimeline, FullTimeline } from './ui/StatusTimeline';
 import { Diagnostics } from './ui/Diagnostics';
 import { DetailsMenu } from './ui/DetailsMenu';
 import * as s from './OverviewPage.styles';
+
+// TODO: replace with the real destinations.
+const DOCS_URL = 'https://docs.crossplane.io/latest/';
+const FEEDBACK_URL = 'https://github.com/openmcp-project/opencontrolplane-headlamp-plugin/issues';
+
+function openExternal(url: string) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 export function OverviewPage() {
   const components = useInstalledComponents();
@@ -16,7 +27,22 @@ export function OverviewPage() {
 
   return (
     <div style={s.pageStyle}>
-      <h1 style={s.titleStyle}>Control Plane Overview</h1>
+      <div style={s.headerRowStyle}>
+        <div>
+          <h1 style={s.titleStyle}>Control Plane Overview</h1>
+          <div style={s.subtitleStyle}>Manage and monitor services that power your control plane.</div>
+        </div>
+        <div style={s.headerLinksStyle}>
+          <button type="button" style={s.headerLinkStyle} onClick={() => openExternal(DOCS_URL)}>
+            <Icon icon={openInNew} width={16} height={16} />
+            View Public Docs
+          </button>
+          <button type="button" style={s.headerLinkStyle} onClick={() => openExternal(FEEDBACK_URL)}>
+            <Icon icon={messageIcon} width={16} height={16} />
+            Provide Feedback
+          </button>
+        </div>
+      </div>
 
       <div style={s.sectionStyle}>
         <div style={s.headingStyle}>Components</div>
