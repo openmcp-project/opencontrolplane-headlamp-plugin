@@ -34,7 +34,29 @@ export const expandedCellStyle: React.CSSProperties = {
 };
 export const loadingVersionStyle: React.CSSProperties = { color: '#888', fontSize: 12, fontFamily: 'inherit' };
 export const pageStyle: React.CSSProperties = { padding: 24, maxWidth: 800 };
-export const titleStyle: React.CSSProperties = { fontSize: 24, fontWeight: 700, marginBottom: 24 };
+export const titleStyle: React.CSSProperties = { fontSize: 24, fontWeight: 700, margin: 0 };
+
+export const headerRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 16,
+  marginBottom: 24,
+};
+export const subtitleStyle: React.CSSProperties = { color: '#6B7280', fontSize: 14, marginTop: 4 };
+export const headerLinksStyle: React.CSSProperties = { display: 'flex', gap: 20, flexShrink: 0, paddingTop: 4 };
+export const headerLinkStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  color: '#0070F2',
+  fontSize: 14,
+  cursor: 'pointer',
+  textDecoration: 'none',
+  background: 'none',
+  border: 'none',
+  padding: 0,
+};
 
 export const chevronStyle = (expanded: boolean): React.CSSProperties => ({
   display: 'inline-block',
