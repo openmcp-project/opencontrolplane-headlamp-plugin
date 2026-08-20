@@ -1,110 +1,157 @@
 import { useEffect, useState } from 'react';
 import { getApiProxy } from './api';
+import type { LearningCategory, LearningStory, VerificationRule } from './learning-content/types';
+import { DEFAULT_CATEGORIES, DEFAULT_STORIES } from './learning-content/index';
 
-const DOCS_BASE = 'https://github.tools.sap/cloud-orchestration';
-
-export interface Challenge {
-  id: string;
-  track: string;
-  title: string;
-  description: string;
-  docsUrl: string;
-  xp: number;
-}
-
-export const CHALLENGES: Challenge[] = [
-  // ── Track 1: Turn landscape into code ────────────────────────────────────
-  {
-    id: 'first-provider',
-    track: 'Turn landscape into code',
-    title: 'Install your first Provider',
-    description: 'Declare infrastructure in YAML by installing a Crossplane provider on your control plane.',
-    docsUrl: DOCS_BASE + '/docs/what-is-iad/learning-path/manifests/phase-1',
-    xp: 100,
-  },
-  {
-    id: 'kustomize-templates',
-    track: 'Turn landscape into code',
-    title: 'Replicate with Kustomize',
-    description: 'Eliminate copy-paste across environments using Kustomize overlays to manage variants of your manifests.',
-    docsUrl: DOCS_BASE + '/docs/what-is-iad/learning-path/manifests/phase-2',
-    xp: 200,
-  },
-  {
-    id: 'gitops-flux',
-    track: 'Turn landscape into code',
-    title: 'Automate deployments with GitOps',
-    description: 'Set up Flux to automatically pull and apply your manifests from a Git repository — no more manual kubectl.',
-    docsUrl: DOCS_BASE + '/docs/what-is-iad/learning-path/delivery/phase-3',
-    xp: 300,
-  },
-  // ── Track 2: Use Cases ────────────────────────────────────────────────────
-  {
-    id: 'kyverno-policy',
-    track: 'Use Cases',
-    title: 'Secure with Kyverno Policies',
-    description: 'Enforce guardrails on your control plane by installing Kyverno and applying your first ClusterPolicy.',
-    docsUrl: DOCS_BASE + '/docs/use-cases/advanced/Kyverno',
-    xp: 200,
-  },
-  {
-    id: 'secret-rotation',
-    track: 'Use Cases',
-    title: 'Rotate secrets automatically',
-    description: 'Orchestrate a BTP ServiceBinding with key rotation and sync the rolled secret into a Gardener shoot.',
-    docsUrl: DOCS_BASE + '/docs/use-cases/secrets/sync-secret',
-    xp: 300,
-  },
-];
-
-export const TOTAL_XP = CHALLENGES.reduce((sum, c) => sum + c.xp, 0);
-
-async function checkChallenge(id: string): Promise<boolean> {
-  const api = getApiProxy();
-  try {
-    switch (id) {
-      case 'first-provider': {
-        const res = await api.request('/apis/pkg.crossplane.io/v1/providers', { isJSON: true });
-        return (res?.items?.length ?? 0) > 0;
-      }
-      case 'kustomize-templates': {
-        const res = await api.request('/apis/kustomize.toolkit.fluxcd.io/v1/kustomizations', { isJSON: true });
-        return (res?.items?.length ?? 0) > 0;
-      }
-      case 'gitops-flux': {
-        const res = await api.request('/apis/source.toolkit.fluxcd.io/v1/gitrepositories', { isJSON: true });
-        return (res?.items?.length ?? 0) > 0;
-      }
-      case 'kyverno-policy': {
-        const res = await api.request('/apis/kyverno.io/v1/clusterpolicies', { isJSON: true });
-        return (res?.items?.length ?? 0) > 0;
-      }
-      case 'secret-rotation': {
-        const res = await api.request('/apis/account.btp.sap.crossplane.io/v1alpha1/servicebindings', { isJSON: true });
-        return (res?.items ?? []).some((b: any) => b.spec?.rotation?.frequency);
-      }
-      default:
-        return false;
-    }
-  } catch {
-    return false;
-  }
-}
+export type { LearningCategory, LearningStory };
 
 export type CompletionMap = Record<string, boolean | null>;
 
-export function useLearningProgress(): CompletionMap {
+// ── API path helpers ──────────────────────────────────────────────────────────
+
+function pluralise(kind: string): string {
+  const lower = kind.toLowerCase();
+  if (lower.endsWith('policy')) return lower.slice(0, -1) + 'ies';
+  if (lower.endsWith('s')) return lower + 'es';
+  return lower + 's';
+}
+
+function resourceListPath(rule: VerificationRule): string {
+  const plural = pluralise(rule.kind);
+  const base = rule.apiVersion === 'v1'
+    ? `/api/v1`
+    : `/apis/${rule.apiVersion}`;
+  if (rule.namespace) return `${base}/namespaces/${rule.namespace}/${plural}`;
+  return `${base}/${plural}`;
+}
+
+// ── Field-path resolver: ".spec.foo.bar" ─────────────────────────────────────
+
+function resolvePath(obj: unknown, path: string): unknown {
+  return path.split('.').filter(Boolean).reduce(
+    (cur: unknown, key) => (cur != null && typeof cur === 'object' ? (cur as Record<string, unknown>)[key] : undefined),
+    obj,
+  );
+}
+
+// ── Verification engine ───────────────────────────────────────────────────────
+
+export async function runVerification(rules: VerificationRule[]): Promise<boolean> {
+  const api = getApiProxy();
+  for (const rule of rules) {
+    try {
+      const res = await api.request(resourceListPath(rule), { isJSON: true });
+      let items: unknown[] = res?.items ?? [];
+
+      if (rule.name) {
+        items = items.filter((item: unknown) =>
+          (item as any)?.metadata?.name === rule.name
+        );
+      }
+
+      if (rule.labelSelector) {
+        items = items.filter((item: unknown) => {
+          const labels: Record<string, string> = (item as any)?.metadata?.labels ?? {};
+          return Object.entries(rule.labelSelector!).every(([k, v]) => labels[k] === v);
+        });
+      }
+
+      const passing = items.some((item: unknown) => {
+        if (rule.conditions?.length) {
+          const conds: any[] = (item as any)?.status?.conditions ?? [];
+          const allMet = rule.conditions.every(want =>
+            conds.some(c => c.type === want.type && c.status === want.status)
+          );
+          if (!allMet) return false;
+        }
+
+        if (rule.fields?.length) {
+          const allMet = rule.fields.every(f => {
+            const val = resolvePath(item, f.path);
+            if (f.exists !== undefined) return f.exists ? val !== undefined : val === undefined;
+            if (f.equals !== undefined) return val === f.equals;
+            return val !== undefined;
+          });
+          if (!allMet) return false;
+        }
+
+        return true;
+      });
+
+      if (!passing) return false;
+    } catch {
+      return false;
+    }
+  }
+  return rules.length > 0;
+}
+
+// ── ConfigMap content loader ──────────────────────────────────────────────────
+
+const CONFIGMAP_NAMESPACE = 'headlamp';
+const CONFIGMAP_NAME = 'ocp-learning-content';
+
+async function loadConfigMapContent(): Promise<{
+  categories: LearningCategory[];
+  stories: LearningStory[];
+} | null> {
+  try {
+    const api = getApiProxy();
+    const cm = await api.request(
+      `/api/v1/namespaces/${CONFIGMAP_NAMESPACE}/configmaps/${CONFIGMAP_NAME}`,
+      { isJSON: true }
+    );
+    const categories: LearningCategory[] = cm?.data?.categories
+      ? JSON.parse(cm.data.categories)
+      : [];
+    const stories: LearningStory[] = cm?.data?.stories
+      ? JSON.parse(cm.data.stories)
+      : [];
+    return { categories, stories };
+  } catch {
+    return null;
+  }
+}
+
+function mergeById<T extends { id: string }>(base: T[], overrides: T[]): T[] {
+  const map = new Map(base.map(item => [item.id, item]));
+  overrides.forEach(item => map.set(item.id, item));
+  return [...map.values()];
+}
+
+// ── Content hook ──────────────────────────────────────────────────────────────
+
+export function useLearningContent(): { categories: LearningCategory[]; stories: LearningStory[] } {
+  const [categories, setCategories] = useState<LearningCategory[]>(DEFAULT_CATEGORIES);
+  const [stories, setStories] = useState<LearningStory[]>(DEFAULT_STORIES);
+
+  useEffect(() => {
+    loadConfigMapContent().then(extra => {
+      if (!extra) return;
+      setCategories(prev => mergeById(prev, extra.categories));
+      setStories(prev => mergeById(prev, extra.stories));
+    });
+  }, []);
+
+  return { categories, stories };
+}
+
+// ── Progress hook ─────────────────────────────────────────────────────────────
+
+export function useLearningProgress(stories: LearningStory[]): CompletionMap {
   const [results, setResults] = useState<CompletionMap>(
-    Object.fromEntries(CHALLENGES.map(c => [c.id, null]))
+    Object.fromEntries(stories.map(s => [s.id, null]))
   );
 
   useEffect(() => {
-    CHALLENGES.forEach(c => {
-      checkChallenge(c.id).then(done =>
-        setResults(prev => ({ ...prev, [c.id]: done }))
+    if (!stories.length) return;
+    setResults(Object.fromEntries(stories.map(s => [s.id, null])));
+    stories.forEach(s => {
+      runVerification(s.verification).then(done =>
+        setResults(prev => ({ ...prev, [s.id]: done }))
       );
     });
-  }, []);
+  }, [stories.map(s => s.id).join(',')]);
 
   return results;
 }

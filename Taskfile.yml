@@ -26,3 +26,8 @@ tasks:
         kubectl --context {{.CONTEXT}} cp dist/main.js "{{.NAMESPACE}}/${POD}:/headlamp/plugins/{{.PLUGIN_DIR}}/main.js"
         kubectl --context {{.CONTEXT}} cp package.json "{{.NAMESPACE}}/${POD}:/headlamp/plugins/{{.PLUGIN_DIR}}/package.json"
         echo "✓ OCP plugin synced — hard-refresh the browser to pick up changes"
+
+  dev:desktop:
+    desc: "Watch build with auto-copy to Headlamp desktop plugins folder. Usage: task dev:desktop"
+    cmds:
+      - npm run start
