@@ -38,13 +38,16 @@ export const titleStyle: React.CSSProperties = { fontSize: 24, fontWeight: 700, 
 
 export const headerRowStyle: React.CSSProperties = {
   display: 'flex',
-  alignItems: 'flex-start',
+  alignItems: 'center',
   justifyContent: 'space-between',
   gap: 16,
   marginBottom: 24,
+  background: '#F5F6F7',
+  borderRadius: 8,
+  padding: '16px 20px',
 };
 export const subtitleStyle: React.CSSProperties = { color: '#6B7280', fontSize: 14, marginTop: 4 };
-export const headerLinksStyle: React.CSSProperties = { display: 'flex', gap: 20, flexShrink: 0, paddingTop: 4 };
+export const headerLinksStyle: React.CSSProperties = { display: 'flex', gap: 20, flexShrink: 0 };
 export const headerLinkStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',

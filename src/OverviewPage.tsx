@@ -1,18 +1,17 @@
 import React from 'react';
 import { Icon } from '@iconify/react';
 import openInNew from '@iconify/icons-mdi/open-in-new';
-import messageIcon from '@iconify/icons-mdi/message-reply-text-outline';
-import { useInstalledComponents } from './components';
+import lifebuoyIcon from '@iconify/icons-mdi/lifebuoy';
+import { useInstalledComponents, useHostMode } from './components';
 import { useProviders } from './providers';
 import { HealthChip, StatusChip } from './ui/chips';
 import { MiniTimeline, FullTimeline } from './ui/StatusTimeline';
 import { Diagnostics } from './ui/Diagnostics';
 import { DetailsMenu } from './ui/DetailsMenu';
+import { openSupportIssue } from './host-bridge';
 import * as s from './OverviewPage.styles';
 
-// TODO: replace with the real destinations.
-const DOCS_URL = 'https://docs.crossplane.io/latest/';
-const FEEDBACK_URL = 'https://github.com/openmcp-project/opencontrolplane-headlamp-plugin/issues';
+const DOCS_URL = 'https://pages.github.tools.sap/cloud-orchestration/';
 
 function openExternal(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer');
@@ -20,6 +19,7 @@ function openExternal(url: string) {
 
 export function OverviewPage() {
   const components = useInstalledComponents();
+  const { mode, landscape } = useHostMode();
   const { providers, error: providersError } = useProviders();
   const [expanded, setExpanded] = React.useState<string | null>(null);
 
@@ -37,9 +37,9 @@ export function OverviewPage() {
             <Icon icon={openInNew} width={16} height={16} />
             View Public Docs
           </button>
-          <button type="button" style={s.headerLinkStyle} onClick={() => openExternal(FEEDBACK_URL)}>
-            <Icon icon={messageIcon} width={16} height={16} />
-            Provide Feedback
+          <button type="button" style={s.headerLinkStyle} onClick={() => openSupportIssue(components, mode, landscape)}>
+            <Icon icon={lifebuoyIcon} width={16} height={16} />
+            Open Support Issue
           </button>
         </div>
       </div>
