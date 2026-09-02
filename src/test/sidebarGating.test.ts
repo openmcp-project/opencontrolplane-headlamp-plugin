@@ -4,17 +4,17 @@ const { registerSidebarEntry, registerSidebarEntryFilter } = vi.hoisted(() => ({
   registerSidebarEntry: vi.fn(),
   registerSidebarEntryFilter: vi.fn(),
 }));
-const { apiExists } = vi.hoisted(() => ({ apiExists: vi.fn() }));
+const { fetchDeploymentVersion } = vi.hoisted(() => ({ fetchDeploymentVersion: vi.fn() }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({ registerSidebarEntry, registerSidebarEntryFilter }));
-vi.mock('../api', () => ({ apiExists }));
+vi.mock('../api', () => ({ fetchDeploymentVersion }));
 
 import { gateEntry, probeCycle, startSidebarGating, __resetForTests, GATED_TABS } from '../sidebarGating';
 
 beforeEach(() => {
   registerSidebarEntry.mockReset();
   registerSidebarEntryFilter.mockReset();
-  apiExists.mockReset();
+  fetchDeploymentVersion.mockReset();
   __resetForTests();
 });
 
@@ -32,8 +32,10 @@ describe('gateEntry', () => {
     expect(gateEntry({})).toEqual({});
   });
 
-  it('shows a gated tab once its component probes installed', async () => {
-    apiExists.mockImplementation((path: string) => Promise.resolve(path.includes('crossplane')));
+  it('shows a gated tab once its component deployment is found', async () => {
+    fetchDeploymentVersion.mockImplementation((paths: string[]) =>
+      Promise.resolve(paths.some((p) => p.includes('crossplane')) ? 'v1.15.0' : null),
+    );
     await probeCycle();
     const crossplane = { name: 'crossplane' };
     expect(gateEntry(crossplane)).toBe(crossplane);
@@ -43,26 +45,26 @@ describe('gateEntry', () => {
 
 describe('probeCycle', () => {
   it('bumps the sidebar when the installed set changes (appears)', async () => {
-    apiExists.mockResolvedValue(true);
+    fetchDeploymentVersion.mockResolvedValue('v1.0.0');
     await probeCycle();
     expect(registerSidebarEntry).toHaveBeenCalledTimes(1);
     expect(registerSidebarEntry).toHaveBeenCalledWith(expect.objectContaining({ name: 'ocp-overview' }));
   });
 
   it('does not bump when the set is unchanged between cycles', async () => {
-    apiExists.mockResolvedValue(true);
-    await probeCycle(); // false -> true, bump
-    await probeCycle(); // true -> true, no change
+    fetchDeploymentVersion.mockResolvedValue('v1.0.0');
+    await probeCycle();
+    await probeCycle();
     expect(registerSidebarEntry).toHaveBeenCalledTimes(1);
   });
 
   it('bumps again and hides the tab when a component disappears', async () => {
-    apiExists.mockResolvedValue(true);
-    await probeCycle(); // installed
+    fetchDeploymentVersion.mockResolvedValue('v1.0.0');
+    await probeCycle();
     expect(gateEntry({ name: 'crossplane' })).not.toBeNull();
 
-    apiExists.mockResolvedValue(false);
-    await probeCycle(); // uninstalled -> bump + hidden
+    fetchDeploymentVersion.mockResolvedValue(null);
+    await probeCycle();
     expect(registerSidebarEntry).toHaveBeenCalledTimes(2);
     expect(gateEntry({ name: 'crossplane' })).toBeNull();
   });
@@ -70,14 +72,18 @@ describe('probeCycle', () => {
 
 describe('startSidebarGating', () => {
   it('registers the filter and returns a stop function', () => {
-    apiExists.mockResolvedValue(false);
+    fetchDeploymentVersion.mockResolvedValue(null);
     const stop = startSidebarGating();
     expect(registerSidebarEntryFilter).toHaveBeenCalledTimes(1);
     expect(typeof stop).toBe('function');
     stop();
   });
 
-  it('gates exactly the crossplane and flux tabs', () => {
-    expect(GATED_TABS).toEqual({ crossplane: 'crossplane', flux: 'flux' });
+  it('gates crossplane, flux and external-secrets-operator tabs', () => {
+    expect(GATED_TABS).toEqual({
+      crossplane: 'crossplane',
+      flux: 'flux',
+      externalSecretsOperator: 'external-secrets-operator',
+    });
   });
 });

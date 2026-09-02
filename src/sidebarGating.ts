@@ -1,10 +1,11 @@
 import { registerSidebarEntry, registerSidebarEntryFilter } from '@kinvolk/headlamp-plugin/lib';
-import { apiExists } from './api';
+import { fetchDeploymentVersion } from './api';
 import { COMPONENTS } from './config';
 
 export const GATED_TABS: Record<string, string> = {
   crossplane: 'crossplane',
   flux: 'flux',
+  externalSecretsOperator: 'external-secrets-operator',
 };
 
 const PROBE_INTERVAL_MS = 20_000;
@@ -41,7 +42,7 @@ export async function probeCycle() {
     Object.keys(GATED_TABS).map(async (component) => {
       const cfg = COMPONENTS.find((c) => c.name === component);
       if (!cfg) return { component, ok: false };
-      const ok = await apiExists(cfg.probe);
+      const ok = (await fetchDeploymentVersion(cfg.versionPaths)) !== null;
       return { component, ok };
     }),
   );
