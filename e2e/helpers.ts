@@ -20,6 +20,5 @@ async function authenticate(page: Page) {
 export async function gotoOCPOverview(page: Page) {
   await page.goto(`/c/${CLUSTER}/ocp/overview`, { waitUntil: 'domcontentloaded' });
   await authenticate(page);
-  // Wait for the heading — deepest content confirming full page load
-  await page.waitForSelector('text=Control Plane Overview', { timeout: 40_000 }).catch(() => {});
+  await page.waitForSelector('text=Control Plane Overview', { timeout: 40_000 });
 }
