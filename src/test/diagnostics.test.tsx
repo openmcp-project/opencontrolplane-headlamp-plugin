@@ -10,7 +10,6 @@ beforeEach(() => request.mockReset());
 
 const deployment = (over: Record<string, unknown>) => ({ items: [over] });
 
-// Flush the fetch → setState microtask chain inside an act() boundary.
 async function open() {
   fireEvent.click(screen.getByText('View Logs'));
   await act(async () => {
@@ -64,5 +63,43 @@ describe('Diagnostics', () => {
     render(<Diagnostics versionPaths={['/a']} />);
     await open();
     expect(screen.getByText(/No workload diagnostics/)).toBeTruthy();
+  });
+
+  it('does not refetch on subsequent opens once data is loaded', async () => {
+    request.mockResolvedValue(
+      deployment({ metadata: { namespace: 'ns' }, status: { conditions: [{ type: 'Ready', status: 'True' }] } }),
+    );
+
+    render(<Diagnostics versionPaths={['/a']} />);
+    await open();
+    fireEvent.click(screen.getByText('Hide Logs'));
+    await open();
+
+    expect(request).toHaveBeenCalledTimes(2); // deployment + events, once only
+  });
+
+  it('shows fallback message when fetch rejects', async () => {
+    request.mockRejectedValueOnce(new Error('network error'));
+    render(<Diagnostics versionPaths={['/a']} />);
+    await open();
+    expect(screen.getByText(/No workload diagnostics/)).toBeTruthy();
+  });
+
+  it('renders condition reason and message when present', async () => {
+    request.mockResolvedValueOnce(
+      deployment({
+        metadata: { namespace: 'ns' },
+        status: {
+          conditions: [{ type: 'Available', status: 'False', reason: 'CrashLoopBackOff', message: 'container failed' }],
+        },
+      }),
+    );
+    request.mockResolvedValueOnce({ items: [] });
+
+    render(<Diagnostics versionPaths={['/a']} />);
+    await open();
+
+    expect(screen.getByText('CrashLoopBackOff', { exact: false })).toBeTruthy();
+    expect(screen.getByText(/container failed/)).toBeTruthy();
   });
 });

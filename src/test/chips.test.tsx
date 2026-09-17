@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { StatusChip } from '../ui/chips';
+import { StatusChip, HealthChip } from '../ui/chips';
 
 const text = (installed: boolean | null, phase?: string | null) =>
   render(<StatusChip installed={installed} phase={phase} />).container.textContent;
@@ -25,5 +25,27 @@ describe('StatusChip precedence', () => {
     expect(text(true, null)).toBe('Installed');
     expect(text(null, null)).toBe('Loading…');
     expect(text(false, null)).toBe('Not installed');
+  });
+
+  it('shows an arbitrary phase string as-is', () => {
+    expect(text(false, 'Terminating')).toBe('Terminating');
+    expect(text(null, 'Initializing')).toBe('Initializing');
+  });
+});
+
+describe('HealthChip', () => {
+  const healthText = (healthy: boolean | null) =>
+    render(<HealthChip healthy={healthy} />).container.textContent;
+
+  it('shows Healthy for true', () => {
+    expect(healthText(true)).toBe('Healthy');
+  });
+
+  it('shows Unhealthy for false', () => {
+    expect(healthText(false)).toBe('Unhealthy');
+  });
+
+  it('shows — for null (unknown health)', () => {
+    expect(healthText(null)).toBe('—');
   });
 });
