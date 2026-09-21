@@ -1,22 +1,15 @@
-import { FIORI } from './theme';
+import { HORIZON_LIGHT } from './theme';
 
+// Kiosk chrome: purely STRUCTURAL overrides (hide the app bar, reclaim layout,
+// remove built-in entries, suppress error banners, order the sidebar). All COLOR
+// now comes from the registered Horizon AppTheme (see index.tsx) so both light
+// and dark modes are handled by a single source of truth — this CSS deliberately
+// sets no palette values, otherwise it would fight the theme and break dark mode.
 export function kioskCss(): string {
   return `
-    /* ── Fiori Horizon design tokens ── */
     :root {
-      --ocp-primary:   ${FIORI.primaryBlue};
-      --ocp-page-bg:   ${FIORI.pageBackground};
-      --ocp-card-bg:   ${FIORI.cardBackground};
-      --ocp-body-text: ${FIORI.bodyText};
-      --ocp-muted:     ${FIORI.mutedText};
-      --ocp-success:   ${FIORI.successGreen};
-      --ocp-warning:   ${FIORI.warningAmber};
-      --ocp-error:     ${FIORI.errorRed};
-      --ocp-radius:    ${FIORI.borderRadius};
+      --ocp-radius: ${HORIZON_LIGHT.radius}px;
     }
-
-    /* ── Page & body background ── */
-    /* Applied imperatively in JS to beat MUI CssBaseline */
 
     /* ── Hide the Headlamp AppBar (top bar with logo, search, user) ── */
     header[class*="MuiAppBar"],
@@ -42,21 +35,10 @@ export function kioskCss(): string {
       background-color: transparent !important;
     }
 
-    /* ── Strip MUI box backgrounds so gradient shows through ── */
+    /* ── Strip MUI box backgrounds so the theme page background shows through ── */
     #root > div[class*="MuiBox"],
     #root > div[class*="MuiBox"] > div[class*="MuiBox"] {
       background-color: transparent !important;
-    }
-
-    /* ── Sidebar selected-item highlight (Fiori blue) ── */
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"],
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"]:hover {
-      background-color: ${FIORI.sidebarSelectedBg} !important;
-      color: ${FIORI.sidebarSelectedFg} !important;
-    }
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiListItemText-primary"],
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiSvgIcon-root"] {
-      color: ${FIORI.sidebarSelectedFg} !important;
     }
 
     /* ── Hide specific built-in sidebar entries by aria-label ── */
@@ -82,30 +64,10 @@ export function kioskCss(): string {
       display: none !important;
     }
 
-    /* ── Fiori-aligned card radius & background ── */
+    /* ── Card radius follows the Horizon corner radius ── */
     [class*="MuiPaper-root"][class*="MuiCard-root"],
     [class*="MuiPaper-elevation"] {
       border-radius: var(--ocp-radius) !important;
-      background-color: var(--ocp-card-bg) !important;
-    }
-
-    /* ── Body text colour ── */
-    body, [class*="MuiTypography-body"] {
-      color: var(--ocp-body-text) !important;
-    }
-
-    /* ── Primary buttons ── */
-    [class*="MuiButton-containedPrimary"] {
-      background-color: var(--ocp-primary) !important;
-      border-radius: 4px !important;
-    }
-    [class*="MuiButton-containedPrimary"]:hover {
-      background-color: #0057C2 !important;
-    }
-
-    /* ── Links ── */
-    a:not([class*="MuiButton"]) {
-      color: var(--ocp-primary) !important;
     }
 
     /* ── Hide "Create" buttons in sidebar — language-independent MUI class selectors ── */

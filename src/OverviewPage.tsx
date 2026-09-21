@@ -9,6 +9,7 @@ import { MiniTimeline, FullTimeline } from './ui/StatusTimeline';
 import { Diagnostics } from './ui/Diagnostics';
 import { DetailsMenu } from './ui/DetailsMenu';
 import { openSupportIssue } from './host-bridge';
+import { useHorizonTokens } from './theme';
 import * as s from './OverviewPage.styles';
 
 const DOCS_URL = 'https://pages.github.tools.sap/cloud-orchestration/';
@@ -18,6 +19,7 @@ function openExternal(url: string) {
 }
 
 export function OverviewPage() {
+  const tokens = useHorizonTokens();
   const components = useInstalledComponents();
   const { mode, landscape } = useHostMode();
   const { providers, error: providersError } = useProviders();
@@ -27,17 +29,17 @@ export function OverviewPage() {
 
   return (
     <div style={s.pageStyle}>
-      <div style={s.headerRowStyle}>
+      <div style={s.headerRowStyle(tokens)}>
         <div>
           <h1 style={s.titleStyle}>Control Plane Overview</h1>
-          <div style={s.subtitleStyle}>Manage and monitor services that power your control plane.</div>
+          <div style={s.subtitleStyle(tokens)}>Manage and monitor services that power your control plane.</div>
         </div>
         <div style={s.headerLinksStyle}>
-          <button type="button" style={s.headerLinkStyle} onClick={() => openExternal(DOCS_URL)}>
+          <button type="button" style={s.headerLinkStyle(tokens)} onClick={() => openExternal(DOCS_URL)}>
             <Icon icon={openInNew} width={16} height={16} />
             View Public Docs
           </button>
-          <button type="button" style={s.headerLinkStyle} onClick={() => openSupportIssue(components, mode, landscape)}>
+          <button type="button" style={s.headerLinkStyle(tokens)} onClick={() => openSupportIssue(components, mode, landscape)}>
             <Icon icon={lifebuoyIcon} width={16} height={16} />
             Open Support Issue
           </button>
@@ -64,7 +66,7 @@ export function OverviewPage() {
                 <React.Fragment key={c.name}>
                   <tr onClick={() => setExpanded(isExpanded ? null : c.name)} style={s.clickableRowStyle}>
                     <td style={s.chevronTdStyle}>
-                      <span aria-label={isExpanded ? 'Collapse' : 'Expand'} style={s.chevronStyle(isExpanded)}>
+                      <span aria-label={isExpanded ? 'Collapse' : 'Expand'} style={s.chevronStyle(tokens, isExpanded)}>
                         ›
                       </span>
                     </td>
@@ -76,7 +78,7 @@ export function OverviewPage() {
                       <MiniTimeline installed={c.installed} phase={c.phase} />
                     </td>
                     <td style={s.monoTdStyle}>
-                      {c.version === null ? <span style={s.loadingVersionStyle}>Loading…</span> : c.version}
+                      {c.version === null ? <span style={s.loadingVersionStyle(tokens)}>Loading…</span> : c.version}
                     </td>
                     <td style={s.tdStyle} onClick={(e) => e.stopPropagation()}>
                       <DetailsMenu component={c} />
@@ -101,11 +103,11 @@ export function OverviewPage() {
         <div style={s.sectionStyle}>
           <div style={s.headingStyle}>Crossplane Providers</div>
           {providersError ? (
-            <span style={s.mutedStyle}>Crossplane not installed</span>
+            <span style={s.mutedStyle(tokens)}>Crossplane not installed</span>
           ) : providers === null ? (
-            <span style={s.mutedStyle}>Loading…</span>
+            <span style={s.mutedStyle(tokens)}>Loading…</span>
           ) : providers.length === 0 ? (
-            <span style={s.mutedStyle}>No providers installed</span>
+            <span style={s.mutedStyle(tokens)}>No providers installed</span>
           ) : (
             <table style={s.tableStyle}>
               <thead>

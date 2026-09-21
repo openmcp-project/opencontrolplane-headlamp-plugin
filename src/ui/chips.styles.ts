@@ -1,4 +1,5 @@
 import React from 'react';
+import { HorizonTokens } from '../theme';
 
 export const chipStyle = (background: string, color: string): React.CSSProperties => ({
   display: 'inline-block',
@@ -25,4 +26,7 @@ export const conditionSpanStyle = (color: string): React.CSSProperties => ({
   fontWeight: 600,
 });
 
-export const loadingStyle: React.CSSProperties = { color: '#888', fontSize: 12 };
+export const loadingStyle = (tokens: HorizonTokens): React.CSSProperties => ({
+  color: tokens.label,
+  fontSize: 12,
+});

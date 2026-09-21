@@ -16,51 +16,40 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
 }));
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { statusColor, healthKind, FIORI, HORIZON_LIGHT } from '../theme';
 
-// ── conditionChip color logic (replicated inline) ────────────────────────────
+// ── condition/health color logic (real theme module) ─────────────────────────
 
-function conditionChipColor(healthy: boolean | null): string {
-  return healthy === true ? '#4caf50' : healthy === false ? '#f44336' : '#9e9e9e';
-}
-
-describe('conditionChip color logic', () => {
-  it('returns green for true', () => {
-    expect(conditionChipColor(true)).toBe('#4caf50');
+describe('health status colors', () => {
+  it('returns Horizon positive for healthy=true', () => {
+    expect(statusColor(HORIZON_LIGHT, healthKind(true))).toBe(HORIZON_LIGHT.positive);
   });
 
-  it('returns red for false', () => {
-    expect(conditionChipColor(false)).toBe('#f44336');
+  it('returns Horizon negative for healthy=false', () => {
+    expect(statusColor(HORIZON_LIGHT, healthKind(false))).toBe(HORIZON_LIGHT.negative);
   });
 
-  it('returns grey for null', () => {
-    expect(conditionChipColor(null)).toBe('#9e9e9e');
+  it('returns Horizon neutral for unknown/null', () => {
+    expect(statusColor(HORIZON_LIGHT, healthKind(null))).toBe(HORIZON_LIGHT.neutral);
+  });
+
+  it('no longer uses the divergent Material palette', () => {
+    const material = ['#4caf50', '#f44336', '#9e9e9e'];
+    for (const h of [true, false, null] as const) {
+      expect(material).not.toContain(statusColor(HORIZON_LIGHT, healthKind(h)));
+    }
   });
 });
 
-// ── FIORI design tokens ───────────────────────────────────────────────────────
-
-const FIORI = {
-  primaryBlue:       '#0070F2',
-  sidebarSelectedBg: '#b3d9f7',
-  sidebarSelectedFg: '#0a3d6b',
-  pageBackground:    '#F5F6F7',
-  cardBackground:    '#FFFFFF',
-  bodyText:          '#1D2D3E',
-  mutedText:         '#6B7280',
-  successGreen:      '#107E3E',
-  warningAmber:      '#E9730C',
-  errorRed:          '#BB0000',
-  borderRadius:      '8px',
-  spacing:           '8px',
-};
+// ── FIORI back-compat alias (derived from Horizon light) ─────────────────────
 
 describe('FIORI design tokens', () => {
-  it('primaryBlue is #0070F2', () => {
-    expect(FIORI.primaryBlue).toBe('#0070F2');
+  it('primaryBlue matches Horizon brand', () => {
+    expect(FIORI.primaryBlue).toBe('#0070f2');
   });
 
-  it('borderRadius is 8px', () => {
-    expect(FIORI.borderRadius).toBe('8px');
+  it('borderRadius is the Horizon 12px corner radius', () => {
+    expect(FIORI.borderRadius).toBe('12px');
   });
 });
 

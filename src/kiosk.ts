@@ -44,16 +44,11 @@ export function forceSidebarCollapsed() {
   }
 }
 
-// Inject the kiosk chrome-removal + Fiori styling + OCP sidebar ordering CSS,
-// and imperatively suppress alert/error banners that win specificity.
+// Inject the kiosk chrome-removal + OCP sidebar ordering CSS, and imperatively
+// suppress alert/error banners that win specificity. Colors are owned by the
+// registered Horizon AppTheme; this function only manages structure, so the
+// page background is left to the theme (CssBaseline) and works in light + dark.
 export function applyOCPStyles() {
-  const gradient = 'linear-gradient(180deg, transparent 0%, rgba(240,253,250,0.35) 50%, transparent 100%)';
-  [document.documentElement, document.body].forEach((el) => {
-    el.style.setProperty('background-color', '#ffffff', 'important');
-    el.style.setProperty('background-image', gradient, 'important');
-    el.style.setProperty('min-height', '100vh', 'important');
-  });
-
   const mainEl = document.querySelector('main');
   if (mainEl) mainEl.style.setProperty('background', 'transparent', 'important');
 
