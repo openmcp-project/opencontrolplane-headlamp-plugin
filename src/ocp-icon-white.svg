@@ -5,7 +5,11 @@
  width="100.000000pt" height="100.000000pt" viewBox="0 0 100.000000 100.000000"
  preserveAspectRatio="xMidYMid meet">
 <metadata>
-Created by potrace 1.16, written by Peter Selinger 2001-2019
+  Generated from the OCP conductor logo PNG using:
+    ffmpeg -i ocp-logo.png -vf "format=gray,lutrgb=..." ocp-logo.pbm
+    potrace ocp-logo.pbm -s -o ocp-icon-white.svg --width 100pt --height 100pt
+  fill="#000000" replaced with fill="currentColor" for theme compatibility.
+  Original tool: potrace 1.16 by Peter Selinger
 </metadata>
 <g transform="translate(0.000000,100.000000) scale(0.038462,-0.038314)"
 fill="currentColor" stroke="none">
