@@ -130,5 +130,19 @@ export function kioskCss(): string {
       margin-top: 4px !important;
       padding-top: 4px !important;
     }
+
+    /* OCP Overview icon slightly larger than default 24px */
+    ul.MuiList-padding > li:has(a[href*="/ocp/overview"]) svg {
+      font-size: 32px !important;
+      width: 32px !important;
+      height: 32px !important;
+    }
+    ul.MuiList-padding > li:has(a[href*="/ocp/overview"]) [class*="MuiListItemIcon"] {
+      min-width: unset !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin-left: -5px !important;
+    }
   `;
 }
