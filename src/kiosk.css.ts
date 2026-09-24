@@ -87,6 +87,20 @@ export function kioskCss(): string {
     ul.MuiList-padding > li:has(a[href*="/crossplane"])   { order: -200 !important; }
     ul.MuiList-padding > li:has(a[href*="/flux"])         { order: -100 !important; }
 
+    /* OCP Overview icon slightly larger than default 24px */
+    ul.MuiList-padding > li:has(a[href*="/ocp/overview"]) svg {
+      font-size: 32px !important;
+      width: 32px !important;
+      height: 32px !important;
+    }
+    ul.MuiList-padding > li:has(a[href*="/ocp/overview"]) [class*="MuiListItemIcon"] {
+      min-width: unset !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin-left: -5px !important;
+    }
+
     ul.MuiList-padding > li:has(a[href$="/c/main/"]) {
       border-top: 1px solid rgba(128,128,128,0.3) !important;
       margin-top: 4px !important;
