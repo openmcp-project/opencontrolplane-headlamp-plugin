@@ -1,18 +1,20 @@
-import { FIORI } from './theme';
+import { FIORI, FIORI_DARK } from './theme';
+import type { ColorScheme } from './kiosk';
 
-export function kioskCss(): string {
+export function kioskCss(scheme: ColorScheme = 'light'): string {
+  const t: typeof FIORI = scheme === 'dark' ? FIORI_DARK : FIORI;
   return `
     /* ── Fiori Horizon design tokens ── */
     :root {
-      --ocp-primary:   ${FIORI.primaryBlue};
-      --ocp-page-bg:   ${FIORI.pageBackground};
-      --ocp-card-bg:   ${FIORI.cardBackground};
-      --ocp-body-text: ${FIORI.bodyText};
-      --ocp-muted:     ${FIORI.mutedText};
-      --ocp-success:   ${FIORI.successGreen};
-      --ocp-warning:   ${FIORI.warningAmber};
-      --ocp-error:     ${FIORI.errorRed};
-      --ocp-radius:    ${FIORI.borderRadius};
+      --ocp-primary:   ${t.primaryBlue};
+      --ocp-page-bg:   ${t.pageBackground};
+      --ocp-card-bg:   ${t.cardBackground};
+      --ocp-body-text: ${t.bodyText};
+      --ocp-muted:     ${t.mutedText};
+      --ocp-success:   ${t.successGreen};
+      --ocp-warning:   ${t.warningAmber};
+      --ocp-error:     ${t.errorRed};
+      --ocp-radius:    ${t.borderRadius};
     }
 
     /* ── Page & body background ── */
@@ -51,12 +53,12 @@ export function kioskCss(): string {
     /* ── Sidebar selected-item highlight (Fiori blue) ── */
     nav [class*="MuiListItemButton-root"][class*="Mui-selected"],
     nav [class*="MuiListItemButton-root"][class*="Mui-selected"]:hover {
-      background-color: ${FIORI.sidebarSelectedBg} !important;
-      color: ${FIORI.sidebarSelectedFg} !important;
+      background-color: ${t.sidebarSelectedBg} !important;
+      color: ${t.sidebarSelectedFg} !important;
     }
     nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiListItemText-primary"],
     nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiSvgIcon-root"] {
-      color: ${FIORI.sidebarSelectedFg} !important;
+      color: ${t.sidebarSelectedFg} !important;
     }
 
     /* ── Hide specific built-in sidebar entries by aria-label ── */
