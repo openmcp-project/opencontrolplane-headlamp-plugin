@@ -6,20 +6,17 @@ import {
   registerAppTheme,
 } from '@kinvolk/headlamp-plugin/lib';
 import { useEffect } from 'react';
-import { FIORI } from './theme';
+import { buildAppTheme, HORIZON_LIGHT, HORIZON_DARK } from './theme';
 import { OverviewPage } from './OverviewPage';
 import { applyOCPStyles, forceDefaultNamespace, forceSidebarCollapsed, subscribeColorScheme } from './kiosk';
 import { startSidebarGating } from './sidebarGating';
 import { ocpIcon } from './ocpIcon';
 
-// ── Custom theme: Fiori-aligned sidebar highlight ─────────────────────────────
-registerAppTheme({
-  name: 'ocp',
-  sidebar: {
-    selectedBackground: FIORI.sidebarSelectedBg,
-    selectedColor: FIORI.sidebarSelectedFg,
-  },
-});
+// ── App themes: full SAP Fiori Horizon mapping (light + dark) ─────────────────
+// `registerAppTheme` themes ALL of Headlamp — every plugin and built-in view, not
+// just this plugin's routes — so selecting one of these repaints the entire app.
+registerAppTheme(buildAppTheme('ocp-horizon', HORIZON_LIGHT, 'light'));
+registerAppTheme(buildAppTheme('ocp-horizon-dark', HORIZON_DARK, 'dark'));
 
 // ── Sidebar entries to remove completely ──────────────────────────────────────
 const HIDDEN_SIDEBAR_ENTRIES = new Set(['home', 'storage', 'network', 'gatewayapi']);

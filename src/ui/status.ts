@@ -1,17 +1,22 @@
+import { HorizonTokens } from '../theme';
+
 export type StepState = 'completed' | 'current' | 'pending';
 
 export const LIFECYCLE_STEPS: string[] = ['Requested', 'Initializing', 'Progressing', 'Ready'];
 
-export function phaseColor(phase: string): string {
+// Map a lifecycle phase to its Horizon color for the active token set. 'Ready' is
+// a positive terminal state; in-flight phases use the critical/attention color;
+// anything unknown is neutral.
+export function phaseColor(tokens: HorizonTokens, phase: string): string {
   switch (phase) {
     case 'Ready':
-      return '#4caf50';
+      return tokens.positive;
     case 'Initializing':
     case 'Requested':
     case 'Progressing':
-      return '#E9730C';
+      return tokens.critical;
     default:
-      return '#9e9e9e';
+      return tokens.neutral;
   }
 }
 

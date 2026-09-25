@@ -1,24 +1,16 @@
-import { FIORI, FIORI_DARK } from './theme';
+import { HORIZON_LIGHT } from './theme';
 import type { ColorScheme } from './kiosk';
 
-export function kioskCss(scheme: ColorScheme = 'light'): string {
-  const t: typeof FIORI = scheme === 'dark' ? FIORI_DARK : FIORI;
+// Kiosk chrome: purely STRUCTURAL overrides (hide the app bar, reclaim layout,
+// remove built-in entries, suppress error banners, order the sidebar). All COLOR
+// now comes from the registered Horizon AppTheme (see index.tsx) so both light
+// and dark modes are handled by a single source of truth — this CSS deliberately
+// sets no palette values, otherwise it would fight the theme and break dark mode.
+export function kioskCss(_scheme: ColorScheme = 'light'): string {
   return `
-    /* ── Fiori Horizon design tokens ── */
     :root {
-      --ocp-primary:   ${t.primaryBlue};
-      --ocp-page-bg:   ${t.pageBackground};
-      --ocp-card-bg:   ${t.cardBackground};
-      --ocp-body-text: ${t.bodyText};
-      --ocp-muted:     ${t.mutedText};
-      --ocp-success:   ${t.successGreen};
-      --ocp-warning:   ${t.warningAmber};
-      --ocp-error:     ${t.errorRed};
-      --ocp-radius:    ${t.borderRadius};
+      --ocp-radius: ${HORIZON_LIGHT.radius}px;
     }
-
-    /* ── Page & body background ── */
-    /* Applied imperatively in JS to beat MUI CssBaseline */
 
     /* ── Hide the Headlamp AppBar (top bar with logo, search, user) ── */
     header[class*="MuiAppBar"],
@@ -44,21 +36,10 @@ export function kioskCss(scheme: ColorScheme = 'light'): string {
       background-color: transparent !important;
     }
 
-    /* ── Strip MUI box backgrounds so gradient shows through ── */
+    /* ── Strip MUI box backgrounds so the theme page background shows through ── */
     #root > div[class*="MuiBox"],
     #root > div[class*="MuiBox"] > div[class*="MuiBox"] {
       background-color: transparent !important;
-    }
-
-    /* ── Sidebar selected-item highlight (Fiori blue) ── */
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"],
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"]:hover {
-      background-color: ${t.sidebarSelectedBg} !important;
-      color: ${t.sidebarSelectedFg} !important;
-    }
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiListItemText-primary"],
-    nav [class*="MuiListItemButton-root"][class*="Mui-selected"] [class*="MuiSvgIcon-root"] {
-      color: ${t.sidebarSelectedFg} !important;
     }
 
     /* ── Hide specific built-in sidebar entries by aria-label ── */
@@ -84,30 +65,10 @@ export function kioskCss(scheme: ColorScheme = 'light'): string {
       display: none !important;
     }
 
-    /* ── Fiori-aligned card radius & background ── */
+    /* ── Card radius follows the Horizon corner radius ── */
     [class*="MuiPaper-root"][class*="MuiCard-root"],
     [class*="MuiPaper-elevation"] {
       border-radius: var(--ocp-radius) !important;
-      background-color: var(--ocp-card-bg) !important;
-    }
-
-    /* ── Body text colour ── */
-    body, [class*="MuiTypography-body"] {
-      color: var(--ocp-body-text) !important;
-    }
-
-    /* ── Primary buttons ── */
-    [class*="MuiButton-containedPrimary"] {
-      background-color: var(--ocp-primary) !important;
-      border-radius: 4px !important;
-    }
-    [class*="MuiButton-containedPrimary"]:hover {
-      background-color: #0057C2 !important;
-    }
-
-    /* ── Links ── */
-    a:not([class*="MuiButton"]) {
-      color: var(--ocp-primary) !important;
     }
 
     /* ── Hide "Create" buttons in sidebar — language-independent MUI class selectors ── */
@@ -127,12 +88,6 @@ export function kioskCss(scheme: ColorScheme = 'light'): string {
     ul.MuiList-padding > li:has(a[href*="/crossplane"])   { order: -200 !important; }
     ul.MuiList-padding > li:has(a[href*="/flux"])         { order: -100 !important; }
 
-    ul.MuiList-padding > li:has(a[href$="/c/main/"]) {
-      border-top: 1px solid rgba(128,128,128,0.3) !important;
-      margin-top: 4px !important;
-      padding-top: 4px !important;
-    }
-
     /* OCP Overview icon slightly larger than default 24px */
     ul.MuiList-padding > li:has(a[href*="/ocp/overview"]) svg {
       font-size: 32px !important;
@@ -144,7 +99,13 @@ export function kioskCss(scheme: ColorScheme = 'light'): string {
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      margin-left: -5px !important;
+      margin-left: -2px !important;
+    }
+
+    ul.MuiList-padding > li:has(a[href$="/c/main/"]) {
+      border-top: 1px solid rgba(128,128,128,0.3) !important;
+      margin-top: 4px !important;
+      padding-top: 4px !important;
     }
   `;
 }
