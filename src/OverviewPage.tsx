@@ -12,6 +12,7 @@ import { openSupportIssue } from './host-bridge';
 import { useHorizonTokens } from './theme';
 import * as s from './OverviewPage.styles';
 
+
 const DOCS_URL = 'https://pages.github.tools.sap/cloud-orchestration/';
 
 function openExternal(url: string) {
