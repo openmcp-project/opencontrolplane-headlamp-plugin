@@ -98,7 +98,7 @@ export function kioskCss(): string {
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      margin-left: -5px !important;
+      margin-left: -2px !important;
     }
 
     ul.MuiList-padding > li:has(a[href$="/c/main/"]) {
