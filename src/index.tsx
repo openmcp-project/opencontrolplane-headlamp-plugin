@@ -7,7 +7,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { FIORI } from './theme';
 import { OverviewPage } from './OverviewPage';
-import { applyOCPStyles, forceDefaultNamespace, forceSidebarCollapsed } from './kiosk';
+import { applyOCPStyles, forceDefaultNamespace, forceSidebarCollapsed, subscribeColorScheme } from './kiosk';
 import { startSidebarGating } from './sidebarGating';
 
 // ── Custom theme: Fiori-aligned sidebar highlight ─────────────────────────────
@@ -53,6 +53,9 @@ if (typeof window !== 'undefined') {
   applyOCPStyles();
 
   startSidebarGating();
+
+  // Re-inject kiosk styles (light/dark) when the OS color scheme changes.
+  subscribeColorScheme(applyOCPStyles);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyOCPStyles);

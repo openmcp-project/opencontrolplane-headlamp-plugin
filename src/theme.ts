@@ -15,3 +15,14 @@ export const FIORI = {
   accentBlue: '#0a6ed1',
   pendingGrey: '#c4c4c4',
 };
+
+export const FIORI_DARK = {
+  ...FIORI,
+  primaryBlue: '#4db1ff',
+  sidebarSelectedBg: '#0a3d6b',
+  sidebarSelectedFg: '#d1e8ff',
+  pageBackground: '#12171c',
+  cardBackground: '#1c2229',
+  bodyText: '#e6eaee',
+  mutedText: '#a0aab4',
+};
