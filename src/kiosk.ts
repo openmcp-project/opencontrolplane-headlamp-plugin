@@ -1,4 +1,21 @@
 import { kioskCss } from './kiosk.css';
+import { HORIZON_DARK } from './theme';
+
+// Headlamp already follows the OS color scheme for its own MUI theme; the kiosk
+// CSS below must follow the same signal so it doesn't paint over dark mode.
+export type ColorScheme = 'light' | 'dark';
+
+export function resolveColorScheme(): ColorScheme {
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+// Re-inject the kiosk styles when the OS color scheme changes while open.
+export function subscribeColorScheme(onChange: () => void): () => void {
+  const mql = window.matchMedia?.('(prefers-color-scheme: dark)');
+  if (!mql?.addEventListener) return () => {};
+  mql.addEventListener('change', onChange);
+  return () => mql.removeEventListener('change', onChange);
+}
 
 // Default the namespace filter to "default" for the current cluster.
 export function forceDefaultNamespace() {
@@ -49,8 +66,14 @@ export function forceSidebarCollapsed() {
 // registered Horizon AppTheme; this function only manages structure, so the
 // page background is left to the theme (CssBaseline) and works in light + dark.
 export function applyOCPStyles() {
-  const gradient = 'linear-gradient(180deg, transparent 0%, rgba(240,253,250,0.35) 50%, transparent 100%)';
+  const scheme = resolveColorScheme();
+  const dark = scheme === 'dark';
+  const pageBg = dark ? HORIZON_DARK.background : '#ffffff';
+  const gradient = dark
+    ? 'none'
+    : 'linear-gradient(180deg, transparent 0%, rgba(240,253,250,0.35) 50%, transparent 100%)';
   [document.documentElement, document.body].forEach((el) => {
+    el.style.setProperty('background-color', pageBg, 'important');
     el.style.setProperty('background-image', gradient, 'important');
   });
 
@@ -65,7 +88,7 @@ export function applyOCPStyles() {
 
   const style = document.createElement('style');
   style.id = styleId;
-  style.innerHTML = kioskCss();
+  style.innerHTML = kioskCss(scheme);
 
   document.head.appendChild(style);
 

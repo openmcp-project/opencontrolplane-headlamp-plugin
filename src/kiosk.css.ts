@@ -1,11 +1,12 @@
 import { HORIZON_LIGHT } from './theme';
+import type { ColorScheme } from './kiosk';
 
 // Kiosk chrome: purely STRUCTURAL overrides (hide the app bar, reclaim layout,
 // remove built-in entries, suppress error banners, order the sidebar). All COLOR
 // now comes from the registered Horizon AppTheme (see index.tsx) so both light
 // and dark modes are handled by a single source of truth — this CSS deliberately
 // sets no palette values, otherwise it would fight the theme and break dark mode.
-export function kioskCss(): string {
+export function kioskCss(_scheme: ColorScheme = 'light'): string {
   return `
     :root {
       --ocp-radius: ${HORIZON_LIGHT.radius}px;
