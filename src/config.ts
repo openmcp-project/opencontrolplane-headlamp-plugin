@@ -48,6 +48,26 @@ export const COMPONENTS: ComponentConfig[] = [
     docsUrl: 'https://external-secrets.io/latest/',
   },
   {
+    name: 'ocm',
+    label: 'Open Component Model',
+    probe: '/apis/delivery.ocm.software/v1alpha1',
+    versionPaths: [
+      '/apis/apps/v1/namespaces/ocm-k8s-toolkit-system/deployments?labelSelector=app.kubernetes.io/name=ocm-k8s-toolkit',
+      '/apis/apps/v1/namespaces/ocm-k8s-toolkit-system/deployments',
+    ],
+    docsUrl: 'https://ocm.software/docs/',
+  },
+  {
+    name: 'kro',
+    label: 'Kubernetes Resource Orchestrator',
+    probe: '/apis/kro.run/v1alpha1',
+    versionPaths: [
+      '/apis/apps/v1/namespaces/kro-system/deployments?labelSelector=app.kubernetes.io/name=kro',
+      '/apis/apps/v1/namespaces/kro-system/deployments',
+    ],
+    docsUrl: 'https://kro.run/docs/',
+  },
+  {
     name: 'kyverno',
     label: 'Kyverno',
     probe: '/apis/kyverno.io/v1/policies',
