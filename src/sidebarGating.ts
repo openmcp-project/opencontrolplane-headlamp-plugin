@@ -1,6 +1,7 @@
 import { registerSidebarEntry, registerSidebarEntryFilter } from '@kinvolk/headlamp-plugin/lib';
 import { fetchDeploymentVersion } from './api';
 import { COMPONENTS } from './config';
+import { ocpIcon } from './ocpIcon';
 
 export const GATED_TABS: Record<string, string> = {
   crossplane: 'crossplane',
@@ -33,7 +34,7 @@ function bumpSidebar() {
     name: 'ocp-overview',
     label: 'Overview',
     url: '/ocp/overview',
-    icon: 'mdi:view-dashboard-outline',
+    icon: ocpIcon,
   });
 }
 

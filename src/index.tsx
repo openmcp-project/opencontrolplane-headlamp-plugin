@@ -9,6 +9,7 @@ import { FIORI } from './theme';
 import { OverviewPage } from './OverviewPage';
 import { applyOCPStyles, forceDefaultNamespace, forceSidebarCollapsed, subscribeColorScheme } from './kiosk';
 import { startSidebarGating } from './sidebarGating';
+import { ocpIcon } from './ocpIcon';
 
 // ── Custom theme: Fiori-aligned sidebar highlight ─────────────────────────────
 registerAppTheme({
@@ -35,7 +36,7 @@ registerSidebarEntry({
   name: 'ocp-overview',
   label: 'Overview',
   url: '/ocp/overview',
-  icon: 'mdi:view-dashboard-outline',
+  icon: ocpIcon,
 });
 
 registerRoute({
