@@ -5,6 +5,8 @@ import {
   registerAppBarAction,
   registerAppTheme,
 } from '@kinvolk/headlamp-plugin/lib';
+import { useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FIORI } from './theme';
 import { OverviewPage } from './OverviewPage';
 import { applyOCPStyles, forceDefaultNamespace, forceSidebarCollapsed } from './kiosk';
@@ -44,6 +46,25 @@ registerRoute({
   name: 'ocpOverview',
   exact: true,
   component: OverviewPage,
+});
+
+// Redirect the cluster root to the OCP overview page.
+function ClusterRootRedirect() {
+  const { cluster } = useParams<{ cluster: string }>();
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate(`/c/${cluster}/ocp/overview`, { replace: true });
+  }, [cluster, navigate]);
+  return null;
+}
+
+registerRoute({
+  path: '/',
+  sidebar: null,
+  name: 'ocpClusterRootRedirect',
+  exact: true,
+  useClusterURL: true,
+  component: ClusterRootRedirect,
 });
 
 // ── Bootstrap: kiosk chrome + re-apply on navigation ──────────────────────────
