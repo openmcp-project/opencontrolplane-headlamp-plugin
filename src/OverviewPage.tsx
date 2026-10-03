@@ -48,12 +48,12 @@ export function OverviewPage() {
       </div>
 
       <div style={s.sectionStyle}>
-        <div style={s.headingStyle}>Components</div>
+        <div style={s.headingStyle}>Services</div>
         <table style={s.tableStyle}>
           <thead>
             <tr>
               <th style={s.chevronThStyle} aria-hidden="true"></th>
-              <th style={s.thStyle}>Component</th>
+              <th style={s.thStyle}>Service</th>
               <th style={s.thStyle}>Status</th>
               <th style={s.thStyle}>Progress</th>
               <th style={s.thStyle}>Installed versions</th>
