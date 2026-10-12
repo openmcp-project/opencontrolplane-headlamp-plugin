@@ -8,7 +8,7 @@ import {
 import { useEffect } from 'react';
 import { buildAppTheme, HORIZON_LIGHT, HORIZON_DARK } from './theme';
 import { OverviewPage } from './OverviewPage';
-import { applyOCPStyles, forceDefaultNamespace, forceSidebarCollapsed, subscribeColorScheme } from './kiosk';
+import { applyOCPStyles, forceDefaultNamespace, forceHorizonTheme, forceSidebarCollapsed, subscribeColorScheme } from './kiosk';
 import { startSidebarGating } from './sidebarGating';
 import { ocpIcon } from './ocpIcon';
 
@@ -66,6 +66,7 @@ registerRoute({
 
 // ── Bootstrap: kiosk chrome + re-apply on navigation ──────────────────────────
 if (typeof window !== 'undefined') {
+  forceHorizonTheme();
   forceSidebarCollapsed();
   forceDefaultNamespace();
   applyOCPStyles();

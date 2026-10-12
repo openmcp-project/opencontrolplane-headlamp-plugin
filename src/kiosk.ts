@@ -32,6 +32,15 @@ export function forceDefaultNamespace() {
   } catch (_) {}
 }
 
+// Set the Horizon theme as the active theme if the user hasn't explicitly chosen one.
+export function forceHorizonTheme() {
+  try {
+    if (!localStorage.headlampThemePreference) {
+      localStorage.headlampThemePreference = resolveColorScheme() === 'dark' ? 'ocp-horizon-dark' : 'ocp-horizon';
+    }
+  } catch (_) {}
+}
+
 // Force the sidebar into collapsed (icon-only) state.
 export function forceSidebarCollapsed() {
   try {
