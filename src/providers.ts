@@ -25,7 +25,14 @@ export function useProviders(): { providers: Provider[] | null; error: boolean }
         const healthy = conditions.find((c: any) => c.type === 'Healthy');
         return {
           name: item.metadata?.name ?? '',
-          version: item.jsonData?.status?.currentRevision ?? '—',
+          version: (() => {
+            const pkg = item.jsonData?.status?.atPkg || item.jsonData?.spec?.package;
+            if (pkg) {
+              const tag = pkg.split(':').pop();
+              if (tag && tag !== pkg) return tag;
+            }
+            return '—';
+          })(),
           healthy: healthy ? healthy.status === 'True' : null,
         };
       })

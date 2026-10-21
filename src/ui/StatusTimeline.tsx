@@ -1,4 +1,6 @@
 import React from 'react';
+import { Icon } from '@iconify/react';
+import checkIcon from '@iconify/icons-mdi/check';
 import { resolveTimeline, StepState, Timeline } from './status';
 import { useHorizonTokens } from '../theme';
 import * as s from './StatusTimeline.styles';
@@ -55,7 +57,7 @@ export function FullTimeline({ installed, phase }: { installed: boolean | null; 
             <React.Fragment key={step.label}>
               {i > 0 && <div style={s.fullConnectorStyle(tokens, step.state, t.complete)} />}
               <div style={s.fullStepStyle}>
-                <div style={s.fullCircleStyle(tokens, step.state, color)}>{showCheck ? '✓' : i + 1}</div>
+                <div style={s.fullCircleStyle(tokens, step.state, color)}>{showCheck ? <Icon icon={checkIcon} width={14} height={14} /> : i + 1}</div>
                 <div style={s.fullLabelStyle}>{step.label}</div>
                 <div style={s.fullSubStyle(tokens)}>{subLabel(step.state)}</div>
               </div>
