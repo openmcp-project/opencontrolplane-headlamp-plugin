@@ -1,0 +1,116 @@
+name: Release main (edge channel)
+
+# Publishes an ArtifactHub "edge" build on every push to main so downstream
+# consumers that opt into the edge channel pick up the latest main automatically.
+# Edge builds are prereleases versioned 0.0.0-main.<timestamp>; they sort below
+# every real release, so they never become the ArtifactHub "latest" that normal
+# consumers resolve. Only one edge entry is kept at a time (older ones are pruned).
+
+on:
+  push:
+    branches: [main]
+    # The metadata commit this workflow lands only touches artifacthub/**, so
+    # ignoring that path stops it from re-triggering itself.
+    paths-ignore:
+      - "artifacthub/**"
+
+concurrency:
+  group: release-main-edge
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  edge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Compute edge version
+        run: |
+          SEMVER="0.0.0-main.$(date -u +%Y%m%d%H%M%S)"
+          echo "SEMVER=${SEMVER}" >> $GITHUB_ENV
+          echo "VERSION=v${SEMVER}" >> $GITHUB_ENV
+
+      - name: Package plugin tar.gz for ArtifactHub
+        run: |
+          mkdir -p package/opencontrolplane
+          cp dist/main.js package/opencontrolplane/main.js
+          cp package.json package/opencontrolplane/package.json
+          tar -czf headlamp-opencontrolplane-${SEMVER}.tar.gz -C package opencontrolplane
+          echo "TARBALL=headlamp-opencontrolplane-${SEMVER}.tar.gz" >> $GITHUB_ENV
+
+      - name: Prune previous edge releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Keep exactly one edge entry: drop any prior 0.0.0-main.* release+tag.
+          for tag in $(gh release list --limit 200 --json tagName --jq '.[].tagName' | grep '^v0.0.0-main\.' || true); do
+            echo "Deleting old edge release ${tag}"
+            gh release delete "${tag}" --cleanup-tag --yes || true
+          done
+
+      - name: Create edge prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${VERSION}" \
+            --prerelease \
+            --title "${VERSION}" \
+            --notes "Automated edge build from main (${GITHUB_SHA})." \
+            --target "${GITHUB_SHA}" \
+            dist/main.js \
+            "${TARBALL}"
+
+      - name: Write artifacthub-pkg.yml for the edge version
+        run: |
+          CHECKSUM=$(sha256sum "${TARBALL}" | awk '{print $1}')
+          # Base the edge metadata on the newest real (non-edge) release metadata.
+          TEMPLATE_DIR=$(ls -d artifacthub/*/ 2>/dev/null | grep -v 'main\.' | sed 's:/*$::' | sort -V | tail -1)
+          PKGDIR="artifacthub/${SEMVER}"
+          # Prune any stale edge metadata dirs so only this one remains.
+          find artifacthub -maxdepth 1 -type d -name '0.0.0-main.*' -exec rm -rf {} + 2>/dev/null || true
+          mkdir -p "${PKGDIR}"
+          cp "${TEMPLATE_DIR}/artifacthub-pkg.yml" "${PKGDIR}/artifacthub-pkg.yml"
+          [ -f "${TEMPLATE_DIR}/README.md" ] && cp "${TEMPLATE_DIR}/README.md" "${PKGDIR}/README.md"
+          PKGFILE="${PKGDIR}/artifacthub-pkg.yml"
+          sed -i "s|version: .*|version: ${SEMVER}|" "${PKGFILE}"
+          sed -i "s|https://github.com/openmcp-project/[^/]*/releases/download/[^/]*/[^ ]*\.tar\.gz|https://github.com/openmcp-project/opencontrolplane-headlamp-plugin/releases/download/${VERSION}/headlamp-opencontrolplane-${SEMVER}.tar.gz|g" "${PKGFILE}"
+          sed -i "s|sha256:.*|sha256:${CHECKSUM}|" "${PKGFILE}"
+
+      - name: Open auto-merge PR with edge metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="chore/headlamp-edge"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "${BRANCH}"
+          git add artifacthub/
+          git commit -m "chore: publish edge build ${VERSION}" || { echo "Nothing to commit"; exit 0; }
+          git push --force origin "${BRANCH}"
+          gh pr create \
+            --title "chore: publish edge build ${VERSION}" \
+            --body "Automated edge-channel metadata for ${VERSION}. Auto-merges to keep the edge build published on ArtifactHub." \
+            --base main \
+            --head "${BRANCH}" || true
+          gh pr merge "${BRANCH}" --auto --squash || true
