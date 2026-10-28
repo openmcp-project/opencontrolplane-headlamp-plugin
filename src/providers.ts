@@ -28,10 +28,10 @@ export function useProviders(): { providers: Provider[] | null; error: boolean }
           version: (() => {
             const pkg = item.jsonData?.status?.atPkg || item.jsonData?.spec?.package;
             if (pkg) {
-              const tag = pkg.split(':').pop();
-              if (tag && tag !== pkg) return tag;
+              const parts = pkg.split(':');
+              if (parts.length > 1) return parts[parts.length - 1];
             }
-            return '—';
+            return item.jsonData?.status?.currentRevision ?? '—';
           })(),
           healthy: healthy ? healthy.status === 'True' : null,
         };
