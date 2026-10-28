@@ -107,5 +107,61 @@ export function kioskCss(_scheme: ColorScheme = 'light'): string {
       margin-top: 4px !important;
       padding-top: 4px !important;
     }
+
+    /* ── Tooltip: replace Headlamp's heavy dark tooltip with SAP Horizon popover style ── */
+    /* Rendered in a portal at <body> end — no drawer scope needed */
+    .MuiTooltip-tooltip {
+      background-color: #ffffff !important;
+      color: #131e29 !important;
+      border: 1px solid #d9d9d9 !important;
+      border-radius: 0.5rem !important;
+      box-shadow: 0 0 0 0.0625rem rgba(34,53,72,0.12), 0 0.125rem 0.5rem 0 rgba(34,53,72,0.18) !important;
+      font-size: 0.75rem !important;
+      font-weight: 400 !important;
+      padding: 0.375rem 0.625rem !important;
+      max-width: 18rem !important;
+    }
+    .MuiTooltip-arrow {
+      color: #ffffff !important;
+    }
+    .MuiTooltip-arrow::before {
+      border: 1px solid #d9d9d9 !important;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .MuiTooltip-tooltip {
+        background-color: #1d232a !important;
+        color: #f5f6f7 !important;
+        border-color: #3a4149 !important;
+        box-shadow: 0 0 0.125rem 0 rgba(0,0,0,0.4), 0 0.125rem 0.5rem 0 rgba(0,0,0,0.35) !important;
+      }
+      .MuiTooltip-arrow {
+        color: #1d232a !important;
+      }
+      .MuiTooltip-arrow::before {
+        border-color: #3a4149 !important;
+      }
+    }
+
+    /* ── Sidebar selected-item indicator: override Headlamp's default yellow ── */
+    /* Light mode (default) */
+    [class*="MuiDrawer-paper"] .MuiListItemButton-root.Mui-selected {
+      background: #b3d9f7 !important;
+      color: #0a3d6b !important;
+    }
+    [class*="MuiDrawer-paper"] .MuiListItemButton-root.Mui-selected:hover {
+      background-color: rgba(179, 217, 247, 0.85) !important;
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      [class*="MuiDrawer-paper"] .MuiListItemButton-root.Mui-selected {
+        background: #1d2d3e !important;
+        color: #d1e8ff !important;
+      }
+      [class*="MuiDrawer-paper"] .MuiListItemButton-root.Mui-selected:hover {
+        background-color: rgba(29, 45, 62, 0.85) !important;
+      }
+    }
   `;
 }
