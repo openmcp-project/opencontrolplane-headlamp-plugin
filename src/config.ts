@@ -77,6 +77,16 @@ export const COMPONENTS: ComponentConfig[] = [
     ],
     docsUrl: 'https://kyverno.io/docs/',
   },
+  {
+    name: 'metricsOperator',
+    label: 'Metrics Operator',
+    probe: '/apis/metrics.openmcp.cloud/v1alpha1',
+    versionPaths: [
+      '/apis/apps/v1/namespaces/metrics-operator-system/deployments?labelSelector=app.kubernetes.io/name=metrics-operator',
+      '/apis/apps/v1/namespaces/metrics-operator-system/deployments',
+    ],
+    docsUrl: 'https://github.com/openmcp-project/metrics-operator#readme',
+  },
   // v2 placeholders — add config entries when needed:
   // { name: 'certManager', label: 'cert-manager', probe: '…', versionPaths: […], docsUrl: '…' },
 ];

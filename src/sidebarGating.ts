@@ -9,6 +9,7 @@ export const GATED_TABS: Record<string, string> = {
   externalSecretsOperator: 'external-secrets-operator',
   ocm: 'ocm',
   kro: 'kro',
+  metricsOperator: 'metrics-operator',
 };
 
 const PROBE_INTERVAL_MS = 20_000;
