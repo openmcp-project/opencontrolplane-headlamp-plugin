@@ -82,13 +82,14 @@ describe('startSidebarGating', () => {
     stop();
   });
 
-  it('gates crossplane, flux, external-secrets-operator, ocm and kro tabs', () => {
+  it('gates crossplane, flux, external-secrets-operator, ocm, kro and metrics-operator tabs', () => {
     expect(GATED_TABS).toEqual({
       crossplane: 'crossplane',
       flux: 'flux',
       externalSecretsOperator: 'external-secrets-operator',
       ocm: 'ocm',
       kro: 'kro',
+      metricsOperator: 'metrics-operator',
     });
   });
 });
