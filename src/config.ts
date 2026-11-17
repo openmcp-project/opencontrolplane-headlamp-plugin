@@ -80,7 +80,7 @@ export const COMPONENTS: ComponentConfig[] = [
   {
     name: 'metricsOperator',
     label: 'Metrics Operator',
-    probe: '/apis/metrics.openmcp.cloud/v1alpha1',
+    probe: '/apis/metrics.open-control-plane.io/v1alpha1',
     versionPaths: [
       '/apis/apps/v1/namespaces/metrics-operator-system/deployments?labelSelector=app.kubernetes.io/name=metrics-operator',
       '/apis/apps/v1/namespaces/metrics-operator-system/deployments',
